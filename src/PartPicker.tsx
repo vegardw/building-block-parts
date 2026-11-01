@@ -27,6 +27,26 @@ const ICONS: Record<string, ReactNode> = {
       <path d="M4 16h5M39 16h5" />
     </>
   ),
+  brick: (
+    <>
+      <rect x="6" y="11" width="36" height="16" rx="1" />
+      <path d="M10 11V7.5h6V11M21 11V7.5h6V11M32 11V7.5h6V11" />
+    </>
+  ),
+  "brick-with-holes": (
+    <>
+      <rect x="6" y="11" width="36" height="16" rx="1" />
+      <path d="M10 11V7.5h6V11M21 11V7.5h6V11M32 11V7.5h6V11" />
+      <circle cx="18.5" cy="19.5" r="3.5" />
+      <circle cx="29.5" cy="19.5" r="3.5" />
+    </>
+  ),
+  plate: (
+    <>
+      <rect x="6" y="17" width="36" height="6" rx="1" />
+      <path d="M10 17v-3.5h6V17M21 17v-3.5h6V17M32 17v-3.5h6V17" />
+    </>
+  ),
 };
 
 const FALLBACK = <rect x="10" y="8" width="28" height="16" rx="2" />;

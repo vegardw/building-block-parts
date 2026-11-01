@@ -95,6 +95,8 @@ describe("fit settings file", () => {
         axle: { value: -0.05, origin: "hand", date: "2026-10-31" },
         pin: { value: 0 },
         collar: { value: 0 },
+        stud: { value: 0 },
+        underside: { value: 0 },
       },
     });
   });
@@ -109,7 +111,7 @@ describe("fit settings file", () => {
 
   it("refuses to save a value that isn't valid", () => {
     expect(fitToFile(fit({ width: "abc" }), "2026-10-31")).toEqual({
-      error: "Clearance for beam width must be a number from −1 to 1 mm. Correct it before saving.",
+      error: "Clearance for part width must be a number from −1 to 1 mm. Correct it before saving.",
     });
   });
 
@@ -121,6 +123,18 @@ describe("fit settings file", () => {
     });
     const loaded = fitFromFile(text);
     expect(loaded).toEqual({ fit: fit({ hole: "0.2" }) });
+  });
+
+  // Files saved before the stud and underside settings existed have six values.
+  it("loads a file from before the stud and underside settings, with those at 0", () => {
+    const old = { value: 0.1, origin: "calibration", date: "2026-10-30" };
+    const six = { hole: old, width: old, height: old, axle: old, pin: old, collar: old };
+    const loaded = fitFromFile(JSON.stringify({ format: FIT_FILE_FORMAT, version: 1, settings: six }));
+    if (!("fit" in loaded)) throw new Error(loaded.error);
+    expect(loaded.fit.text.stud).toBe("0");
+    expect(loaded.fit.text.underside).toBe("0");
+    expect(loaded.fit.text.collar).toBe("0.1");
+    expect(loaded.fit.origins.stud).toBeUndefined();
   });
 
   it("drops a malformed origin but keeps the value", () => {

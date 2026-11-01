@@ -8,8 +8,13 @@ import axle from "./axle";
 import axleCalibration from "./axleCalibration";
 import collarCalibration from "./collarCalibration";
 import pin from "./pin";
+import brick from "./brick";
+import brickWithHoles from "./brickWithHoles";
+import plate from "./plate";
 import pinCalibration from "./pinCalibration";
-import { NO_CLEARANCE, CLEARANCE_FIELDS, EPS, type Clearance } from "../spec";
+import studCalibration from "./studCalibration";
+import undersideCalibration from "./undersideCalibration";
+import { NO_CLEARANCE, CLEARANCE_FIELDS, EPS, type Clearance, type ClearanceKey } from "../spec";
 import { parseNumber } from "../parseNumber";
 import type { ParamText, ParamValues, PartDefinition } from "./types";
 
@@ -17,10 +22,15 @@ export const PARTS: PartDefinition[] = [
   beam,
   axle,
   pin,
+  brick,
+  brickWithHoles,
+  plate,
   calibration,
   axleCalibration,
   pinCalibration,
   collarCalibration,
+  studCalibration,
+  undersideCalibration,
 ];
 
 // The parts listed under Parts. Calibration parts stay in PARTS (they are built
@@ -83,6 +93,11 @@ export function paramProblem(part: PartDefinition, params: ParamValues): { key: 
   return null;
 }
 
+// The fit settings a part uses with these parameters: only those that change it,
+// so a 2L pin isn't "adjusted" by the stud diameter. All of `clearance` without `uses`.
+export const settingsUsed = (part: PartDefinition, params: ParamValues): readonly ClearanceKey[] =>
+  part.uses?.(params) ?? part.clearance;
+
 // Returns an error message, or null if the part can be built.
 export function validatePart(
   part: PartDefinition,
@@ -91,9 +106,10 @@ export function validatePart(
 ): string | null {
   const param = paramProblem(part, params);
   if (param) return param.message;
+  const used = settingsUsed(part, params);
   for (const f of CLEARANCE_FIELDS) {
     const v = clearance[f.key];
-    if (part.clearance.includes(f.key) && !(Number.isFinite(v) && Math.abs(v) <= f.limit + EPS)) {
+    if (used.includes(f.key) && !(Number.isFinite(v) && Math.abs(v) <= f.limit + EPS)) {
       return `${f.name} clearance must be a number from −${f.limit} to ${f.limit} mm.`;
     }
   }

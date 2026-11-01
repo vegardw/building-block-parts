@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   SPEC,
+  BRICK,
   MIN_WALL,
   MAX_STUDS,
   CLEARANCE_FIELDS,
@@ -38,6 +39,20 @@ describe("SPEC", () => {
 
   it("leaves at least MIN_WALL beside the nominal counterbore", () => {
     expect((SPEC.width - SPEC.cboreD) / 2).toBeGreaterThanOrEqual(MIN_WALL);
+  });
+});
+
+// Measured on genuine bricks (docs/dimensions.md): the underside fits a 4.8 stud,
+// the studs are bigger, and the bars no bigger than the room between two studs.
+describe("BRICK", () => {
+  it("makes the underside for a 4.8 stud and the studs 4.85, as genuine bricks measure", () => {
+    expect(BRICK.socketD).toBe(4.8);
+    expect(BRICK.studD).toBe(4.85);
+    expect(BRICK.tubeD).toBeCloseTo(8 * Math.SQRT2 - 4.8, 10); // touches four 4.8 studs
+    expect(2 * (8 / 2 + BRICK.socketD / 2)).toBeCloseTo(12.8, 10); // between opposite ribs
+    expect(BRICK.barD).toBe(3.1);
+    expect(BRICK.barD).toBeLessThan(8 - BRICK.studD); // clear of the studs: the walls grip
+    expect(BRICK.studHeight).toBe(1.8);
   });
 });
 

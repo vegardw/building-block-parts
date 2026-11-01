@@ -8,7 +8,8 @@ import { cutAll } from "./booleans.build";
 // Parameters are validated before this is called (see builders.ts).
 // Built along Z, then laid along X.
 export function buildAxle({ length, endA, endB }: AxleParams, clearance: Clearance): Shape3D {
-  return axleAlongZ(length * SPEC.pitch, axleEnd(endA).id, axleEnd(endB).id, clearance.axle, clearance.collar).rotate(
+  const { axle: size, collar, stud } = clearance;
+  return axleAlongZ(length * SPEC.pitch, axleEnd(endA).id, axleEnd(endB).id, size, collar, stud).rotate(
     90,
     [0, 0, 0],
     [0, 1, 0],
@@ -21,8 +22,16 @@ export function buildAxle({ length, endA, endB }: AxleParams, clearance: Clearan
 export type AxleEndId = AxleEnd["id"] | "flush";
 
 // An axle along Z centred on z = 0, `nominal` mm long, with `size` added to the
-// cross and stud and `collar` to the stop flanges.
-export function axleAlongZ(nominal: number, endA: AxleEndId, endB: AxleEndId, size: number, collar = 0): Shape3D {
+// cross, `collar` to the stop flanges and `stud` to the stud: it sits in a brick's
+// underside, so it takes the stud diameter, like a brick's studs.
+export function axleAlongZ(
+  nominal: number,
+  endA: AxleEndId,
+  endB: AxleEndId,
+  size: number,
+  collar = 0,
+  stud = 0,
+): Shape3D {
   const R = (AXLE.crossD + size) / 2; // tip radius
   const arm = (AXLE.armWidth + size) / 2; // half the arm width
   const ends = [
@@ -69,8 +78,8 @@ export function axleAlongZ(nominal: number, endA: AxleEndId, endB: AxleEndId, si
     }
     if (end.id === "stud") {
       const top = inward(-AXLE.studHeight);
-      const stud = segment((AXLE.studD + size) / 2, at, top).cut(segment(AXLE.studBoreD / 2, at, top - dir));
-      axle = axle.fuse(stud);
+      const open = segment((AXLE.studD + stud) / 2, at, top).cut(segment(AXLE.studBoreD / 2, at, top - dir));
+      axle = axle.fuse(open);
     }
     if (end.id === "stop-in") {
       const flangeOut = inward(SPEC.pitch - AXLE.stopThickness);

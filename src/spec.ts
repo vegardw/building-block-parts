@@ -63,6 +63,41 @@ export const PIN = {
   studHeight: 1.6, // open stud on a half pin, as on the axle with stud
 };
 
+// Bricks and plates (mm): studs on top, and an underside whose walls, ribs, tubes
+// and bars hold the studs of the part below. Sources and choices in
+// docs/dimensions.md, "Brick and plate". Used by bricks, plates and the stud and
+// underside calibration bars.
+//
+// The underside is made for a 4.8 stud (the design size): genuine parts measure
+// 4.8 inside a 1 × N part and 12.8 between opposite ribs. Genuine studs measure
+// 4.84 to 4.88, and that difference is the grip, so the studs are made 4.85.
+const SOCKET_D = 4.8; // 0.6 L
+export const BRICK = {
+  gap: 0.2, // between neighbouring parts: a part n studs long is n × pitch − gap (measured: 7.8 to 23.8)
+  brickHeight: 9.6, // 1.2 L, three plates, without studs
+  plateHeight: 3.2, // 0.4 L, without studs
+  top: 1, // thickness above the underside
+  wall: 1.2, // two studs wide or more; one stud wide, the walls touch the stud (1.5)
+  // A rib on the wall at each stud, reaching the stud (0.3 deep on a 1.2 wall).
+  ribWidth: 0.6,
+  socketD: SOCKET_D, // the stud size the underside is made for (the underside setting adds to it)
+  studD: 4.85, // measured on genuine bricks; a half pin's and an axle's studs stay 4.8
+  studHeight: 1.8, // measured, as Cailliau's and Bartneck's are; a half pin's and an axle's studs keep LDraw's 1.6
+  // A tube sits in the middle of four studs and touches all four: their centres
+  // are √2 × pitch apart across the diagonal (6.51 in the drawings).
+  tubeD: Math.SQRT2 * SPEC.pitch - SOCKET_D,
+  tubeBoreD: SOCKET_D,
+  // Bricks with holes: the beam's hole (SPEC.holeD, cboreD), across the brick, its
+  // centre this far above the bottom. 5.8 for now: Bartneck and Cailliau give it from
+  // genuine parts (LDraw 5.6); caliper readings of 5.6 to 5.8 didn't settle it, so it
+  // may change with better measurements (docs/dimensions.md, "Brick with holes").
+  holeHeight: 5.8,
+  bossD: 7.2, // the boss round each hole, inside: as wide as Bartneck's round one (R3.6), drawn as a block
+  // Between two studs of a part one stud wide, plain or with holes. Genuine ones
+  // measure about 3.0 to 3.14, hard to read: one rounded value, a little clear of
+  // two 4.85 studs (8 − 4.85 = 3.15), so the walls grip, as in genuine parts.
+  barD: 3.1,
+};
 // Minimum wall beside the counterbore, mm. Our own manufacturing limit (nominal
 // wall is 0.5), not a dimension of the system; not yet tested on a real print.
 export const MIN_WALL = 0.2;
@@ -82,10 +117,21 @@ export interface Clearance {
   axle: number;
   pin: number;
   collar: number;
+  stud: number;
+  underside: number; // the stud size an underside is made for: positive = looser
 }
 export type ClearanceKey = keyof Clearance;
 
-export const NO_CLEARANCE: Clearance = { hole: 0, width: 0, height: 0, axle: 0, pin: 0, collar: 0 };
+export const NO_CLEARANCE: Clearance = {
+  hole: 0,
+  width: 0,
+  height: 0,
+  axle: 0,
+  pin: 0,
+  collar: 0,
+  stud: 0,
+  underside: 0,
+};
 
 // Slack for limit checks, so a value exactly at a limit isn't rejected because
 // of float rounding ((7.2 - 0.2 - (6.2 + 0.4)) / 2 is a hair below 0.2).
@@ -97,6 +143,9 @@ export const CLEARANCE_LIMIT = 1;
 export const AXLE_SIZE_LIMIT = 0.5;
 export const PIN_SIZE_LIMIT = 0.5;
 export const COLLAR_SIZE_LIMIT = 0.5;
+export const STUD_SIZE_LIMIT = 0.5;
+// Within it a rib stays at least 0.05 mm deep (0.3 − 0.5 / 2) and a tube's wall 0.6 mm.
+export const UNDERSIDE_SIZE_LIMIT = 0.5;
 
 export interface ClearanceField {
   key: ClearanceKey;
@@ -111,35 +160,35 @@ export const CLEARANCE_FIELDS: ClearanceField[] = [
     key: "hole",
     name: "Hole diameter",
     label: "Hole diameter (mm)",
-    hint: `Added to the ${SPEC.holeD} mm hole and the ${SPEC.cboreD} mm counterbore. Increase if axles or pins are too tight; the hole calibration bar finds it.`,
+    hint: `Added to the ${SPEC.holeD} mm hole and the ${SPEC.cboreD} mm counterbore, in beams and bricks with holes. Increase if axles or pins are too tight; the hole calibration bar finds it.`,
     limit: CLEARANCE_LIMIT,
   },
   {
     key: "width",
-    name: "Beam width",
-    label: "Beam width (mm)",
-    hint: `Added to the ${SPEC.width} mm width. Often zero or slightly negative for processes that grow outer surfaces; measuring the test beam under Calibrate finds it.`,
+    name: "Part width",
+    label: "Part width (mm)",
+    hint: `Added to a part's outside width: a beam's ${SPEC.width} mm across the flat sides, a brick's or plate's length and width. Often zero or slightly negative for processes that grow outer surfaces; measuring the test beam under Calibrate finds it.`,
     limit: CLEARANCE_LIMIT,
   },
   {
     key: "height",
-    name: "Beam height",
-    label: "Beam height (mm)",
-    hint: `Added to the beam height (${SPEC.height} mm, or ${SPEC.halfHeight} mm for a half-height beam). Kept separate because XY and Z errors often differ; measuring the test beam under Calibrate finds it.`,
+    name: "Part height",
+    label: "Part height (mm)",
+    hint: `Added to a part's height: a beam's ${SPEC.height} mm along the holes, or ${SPEC.halfHeight} mm at half height; a brick's ${BRICK.brickHeight} mm or a plate's ${BRICK.plateHeight} mm, without the studs. Kept separate because XY and Z errors often differ; measuring the test beam under Calibrate finds it.`,
     limit: CLEARANCE_LIMIT,
   },
   {
     key: "axle",
     name: "Axle size",
     label: "Axle size (mm)",
-    hint: `Added to the axle's cross (${AXLE.crossD} mm tip to tip, ${AXLE.armWidth} mm arms) and its stud. Usually zero or slightly negative; the calibration axle finds it.`,
+    hint: `Added to the axle's cross (${AXLE.crossD} mm tip to tip, ${AXLE.armWidth} mm arms), also on a pin's axle side. Usually zero or slightly negative; the calibration axle finds it.`,
     limit: AXLE_SIZE_LIMIT,
   },
   {
     key: "pin",
     name: "Pin diameter",
     label: "Pin diameter (mm)",
-    hint: `Added to the pin's shaft (${PIN.shaftD} mm), its lips and friction ribs, and a half pin's stud. A pin without friction should turn freely in a hole; the pin calibration bar finds it.`,
+    hint: `Added to the pin's shaft (${PIN.shaftD} mm), its lips and friction ribs. A pin without friction should turn freely in a hole; the pin calibration bar finds it.`,
     limit: PIN_SIZE_LIMIT,
   },
   {
@@ -148,6 +197,20 @@ export const CLEARANCE_FIELDS: ClearanceField[] = [
     label: "Collar diameter (mm)",
     hint: `Added to every pin collar and axle stop that sits in a counterbore (${SPEC.collarD} mm; ${AXLE.stopInD} mm on a stop one stud in). It should seat in a counterbore with a little play; the collar calibration bar finds it.`,
     limit: COLLAR_SIZE_LIMIT,
+  },
+  {
+    key: "stud",
+    name: "Stud diameter",
+    label: "Stud diameter (mm)",
+    hint: `Added to every stud: ${BRICK.studD} mm on bricks and plates, as genuine ones measure, and ${PIN.shaftD} mm on a half pin and an axle with stud. A genuine brick pressed onto it should hold as on a genuine stud; the stud calibration bar finds it.`,
+    limit: STUD_SIZE_LIMIT,
+  },
+  {
+    key: "underside",
+    name: "Underside size",
+    label: "Underside size (mm)",
+    hint: `The stud size the underside of bricks and plates is made for: positive makes it looser, with thinner tubes (${BRICK.tubeD.toFixed(2)} mm) and bars (${BRICK.barD} mm), and the ribs, or the walls of parts one stud wide, further out. It should hold on genuine studs as a genuine part does; the underside calibration bar finds it.`,
+    limit: UNDERSIDE_SIZE_LIMIT,
   },
 ];
 

@@ -7,11 +7,11 @@ Written in TypeScript with replicad, and runs entirely client-side.
 
 **Use it at <https://blockparts.vegardmakes.com>.**
 
-It generates parts compatible with LEGO® Technic™ and similar building systems:
-beams (liftarms) of full or half height, axles and pins, plus calibration parts
-that find the fit for your printer or CNC machine. Calibrate once, choose the
-size, preview the part in 3D and download a STEP file (or an STL mesh) for
-resin printing or CNC machining.
+It generates parts compatible with LEGO® bricks, LEGO® Technic™ and similar
+building systems: beams (liftarms) of full or half height, axles and pins, bricks
+and plates, plus calibration parts that find the fit for your printer or CNC
+machine. Calibrate once, choose the size, preview the part in 3D and download a
+STEP file (or an STL mesh) for resin printing or CNC machining.
 
 Everything runs in the browser. There is no server-side back end: the CAD
 kernel (OpenCascade, compiled to WebAssembly and used through replicad) runs in
@@ -24,9 +24,9 @@ cylinders with circular edges, not polygons made of line segments.
 
 ## Features
 
-- Pick the part from tiles: beam, axle or pin. Each part (and each calibration step) has
-  its own address with its settings, such as `#parts/beam?holes=7&height=0`, so links,
-  bookmarks and the back button work
+- Pick the part from tiles: beam, axle, pin, brick, brick with holes or plate. Each part
+  (and each calibration step) has its own address with its settings, such as
+  `#parts/beam?holes=7&height=0`, so links, bookmarks and the back button work
 - Beams (liftarms) from 2 to 32 holes, with the standard counterbored holes, full height
   (8 mm) or half height (4 mm, thin liftarms) with the same holes
 - Axles from 1 to 32 studs in half-stud steps, each end plain, notched or with a stop
@@ -35,6 +35,11 @@ cylinders with circular edges, not polygons made of line segments.
   without friction ribs), an axle of 1 or 2 studs, or a stud. That covers 2L and 3L
   pins, half pins and axle pins. Snap ends (lip and slots, like genuine pins) or plain ends.
   Quick picks for common pins (2L, 3L, friction, axle and half pins) set both sides
+- Bricks and plates from 1 × 1 to 16 × 32 studs, with studs on top and an underside that
+  holds studs like a genuine one: tubes and ribbed walls when two or more studs wide, bars
+  and walls that touch the studs when one stud wide. Quick picks for common sizes
+- Bricks with holes from 1 × 1 to 1 × 16 studs: the beam's counterbored hole across the
+  brick between each two studs, for pins and axles
 - Live 3D preview with orbit controls; the camera refits when the part or the window
   size changes, and leaves your own zoom and pan alone. A "Reset view" button, a hint
   on how to move the view, and the part's size (length × width × height) in a corner
@@ -44,18 +49,19 @@ cylinders with circular edges, not polygons made of line segments.
   laid out in rows on the plate
 - Clear input: a value out of range is explained under its field, the preview shows
   that it is outdated, and − / + buttons step lengths and counts (arrow keys too)
-- Fit settings: six clearances set once per machine (hole diameter, beam width, beam
-  height, axle size, pin diameter, collar diameter). Each part shows the ones it uses,
-  each marked as calibrated (with the date), set by hand or not calibrated; lengths and
-  the 8 mm hole pitch are never changed, and a file made with a non-zero value ends in
-  `-adjusted`. Save them to a JSON file and load them in another browser, e.g. one file
-  per machine, from the "Fit settings" button at the top or the "Your fit settings" box
-  on the Calibrate section
-- A Calibrate section (`#calibrate/<step>`) with a step per setting. Each step makes a
+- Fit settings: eight clearances set once per machine (hole diameter, part width, part
+  height, axle size, pin diameter, collar diameter, stud diameter, underside size). Each
+  part shows the ones it uses, each marked as calibrated (with the date), set by hand or
+  not calibrated; the 8 mm spacing of holes and studs is never changed, and a file made
+  with a non-zero value ends in `-adjusted`. Save them to a JSON file and load them in
+  another browser, e.g. one file per machine, from the "Fit settings" button at the top
+  or the "Your fit settings" box on the Calibrate section
+- A Calibrate section (`#calibrate/<step>`) with a step per setting, in groups (beams,
+  pins and axles; bricks and plates; part width and height). Each step makes a
   calibration part (with a 3D preview), shows how to test it against genuine parts, and
   draws the part's features in order: click the one that fits best and it becomes the
   fit setting. When the best fit is at an end, the app offers to centre a new part on it.
-  "Download all four calibration parts" gives one file (STEP or STL) with the four side by side
+  "Download all calibration parts" gives one file (STEP or STL) with the six side by side
   - Hole calibration bar: a row of holes with graduated clearance (default ±0.20 mm in
     0.05 mm steps, around a middle value of 0)
   - Calibration axle: an axle whose one-stud sections grow in size towards a stop; slide
@@ -64,8 +70,15 @@ cylinders with circular edges, not polygons made of line segments.
     that turns freely in real holes
   - Collar calibration bar: round buttons with graduated diameters to find the collar
     size that seats in a real counterbore (for pin collars and axle stops)
-  - Beam width and height: enter what you measure on a test beam; the app works out
+  - Stud calibration bar: studs with graduated diameters; press a genuine 1 × 1 plate
+    onto each to find the stud diameter that grips like a genuine stud
+  - Underside calibration bar: a plate in 2 × 2 sections, each the underside of a 2 × 2
+    plate made for a different stud size; press each onto a genuine 2 × 2 to find the
+    underside size that grips like a genuine part
+  - Part width and height: enter what you measure on a test beam; the app works out
     the settings
+  - A check set under the underside step: a 1 × 1, a 1 × 2 and a 2 × 2 brick and a 1 × 2
+    brick with holes, made with your fit settings, to try against genuine parts
 - The selected part, the calibration step, all parameters, the file type, the parts list
   and the fit settings are remembered in the browser (local storage only; they are never
   sent anywhere)
@@ -237,7 +250,9 @@ project's rules. Report bugs and suggest parts in the
 1. `src/parts/<id>.ts`: a `PartDefinition` (see `types.ts`): id, name, `params` (key, label, type `int` or `number`,
    min, max, step, default; or type `choice` with options), `clearance` (the global
    clearance fields it uses, e.g. `["hole"]`, or `[]`), `filename`, and optionally
-   `validate`, `summary`, `info`, `describe` and `presets`.
+   `validate`, `summary`, `info`, `describe`, `presets`, `uses` (the clearance fields
+   these parameters use, when some depend on them) and `view` (`"below"` to show it
+   from below).
 2. `src/parts/<id>.build.ts`: a function `(params, clearance) => replicad shape`.
 3. Register the definition in `src/parts/index.ts` and the builder in
    `src/parts/builders.ts`.

@@ -1,4 +1,4 @@
-// The fit settings: the dialog that edits, saves and loads all six, the box on
+// The fit settings: the dialog that edits, saves and loads all of them, the box on
 // the Calibrate section with the same file actions, and the box on the Parts
 // section that shows the ones the current part uses.
 import { useRef, useState, type ReactNode } from "react";
@@ -11,7 +11,7 @@ import { formatClearance, readClearance } from "./clearance";
 import { fieldStatus, fitFromFile, fitToFile, isoDate, NOMINAL_FIT, type Fit, type FieldStatus } from "./fit";
 import { stepFor } from "./calibrationSteps";
 import { stepHash } from "./route";
-import type { PartDefinition, SummaryItem } from "./parts/types";
+import type { SummaryItem } from "./parts/types";
 
 export const formatDate = (iso: string): string =>
   new Date(`${iso}T00:00:00`).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
@@ -78,7 +78,7 @@ function FitFileActions({
 
   // Undo instead of a confirmation: the reset is one click away from being undone.
   const reset = () => {
-    setMessage({ text: "All six are back to nominal.", error: false, undo: fit });
+    setMessage({ text: "All fit settings are back to nominal.", error: false, undo: fit });
     onReplace(NOMINAL_FIT);
   };
 
@@ -143,7 +143,7 @@ export default function FitSettings({ open, onClose, fit, onType, onReplace }: F
     <Dialog open={open} onClose={onClose} title="Fit settings" className="fit-dialog">
       <p className="note">
         Corrections for your printer or CNC machine, in mm: positive makes a feature bigger. Every part uses the ones it
-        needs; lengths and the {SPEC.pitch} mm hole spacing never change. The{" "}
+        needs; the {SPEC.pitch} mm spacing of holes and studs never changes. The{" "}
         <a href="#calibrate" onClick={onClose}>
           Calibrate
         </a>{" "}
@@ -227,7 +227,7 @@ export function FitButton({ adjusted, invalid, onClick }: { adjusted: number; in
 }
 
 interface FitBoxProps {
-  part: PartDefinition;
+  keys: readonly ClearanceKey[]; // the settings the part uses with its parameters (settingsUsed)
   fit: Fit;
   adjusted: boolean; // a value the part uses isn't zero
   summary: SummaryItem[] | null;
@@ -236,8 +236,8 @@ interface FitBoxProps {
 
 // The fit settings the current part uses, on the Parts section. They change
 // every download, so they are always in view, with where each came from.
-export function FitBox({ part, fit, adjusted, summary, onEdit }: FitBoxProps) {
-  const fields = CLEARANCE_FIELDS.filter((f) => part.clearance.includes(f.key));
+export function FitBox({ keys, fit, adjusted, summary, onEdit }: FitBoxProps) {
+  const fields = CLEARANCE_FIELDS.filter((f) => keys.includes(f.key));
   const missing = fields.find((f) => fieldStatus(fit, f.key).kind === "none");
   const step = missing && stepFor(missing.key);
 

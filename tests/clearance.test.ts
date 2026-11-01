@@ -15,6 +15,8 @@ const text = (t: Partial<ClearanceText>): ClearanceText => ({
   axle: "0",
   pin: "0",
   collar: "0",
+  stud: "0",
+  underside: "0",
   ...t,
 });
 const BEAM = ["hole", "width", "height"] as const;
@@ -41,14 +43,14 @@ describe("readClearance", () => {
   it("lists every non-zero value in field order", () => {
     const s = readClearance(text({ hole: "0,2", height: "−0.1", axle: "-0.05" }));
     expect(s.clearance).toEqual({ ...NO_CLEARANCE, hole: 0.2, height: -0.1, axle: -0.05 });
-    expect(s.adjustments).toEqual(["Hole diameter +0.20 mm", "Beam height −0.10 mm", "Axle size −0.05 mm"]);
+    expect(s.adjustments).toEqual(["Hole diameter +0.20 mm", "Part height −0.10 mm", "Axle size −0.05 mm"]);
   });
 
   it("names the invalid fields: unparsable, empty or beyond ±1 mm", () => {
     const s = readClearance(text({ hole: "abc", width: "", height: "1.5" }), BEAM);
     expect(s.clearance).toBeNull();
     expect(s.invalid).toEqual(["hole", "width", "height"]);
-    expect(s.problem).toBe("Clearance for hole diameter, beam width and beam height must be a number from −1 to 1 mm.");
+    expect(s.problem).toBe("Clearance for hole diameter, part width and part height must be a number from −1 to 1 mm.");
     expect(s.adjustments).toEqual([]);
   });
 
@@ -78,7 +80,7 @@ describe("readClearance", () => {
   it("marks only the bad field", () => {
     const s = readClearance(text({ hole: "0.1", width: "-" }), BEAM);
     expect(s.invalid).toEqual(["width"]);
-    expect(s.problem).toMatch(/^Clearance for beam width must be/);
+    expect(s.problem).toMatch(/^Clearance for part width must be/);
   });
 
   // A part only reads its own fields: the others count as 0 and can't block it.

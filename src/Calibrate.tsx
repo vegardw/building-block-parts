@@ -1,7 +1,7 @@
 // The Calibrate section: an introduction with "Download all", the steps with
 // their status, the step's part (in the panel beside the preview) and its Test
 // and Result cards. Results are saved straight into the fit settings.
-import { useState } from "react";
+import { useState, type CSSProperties } from "react";
 
 import { Field, ParamFields } from "./fields";
 import { EPS, clearanceField, type ClearanceKey } from "./spec";
@@ -10,6 +10,7 @@ import { parseNumber } from "./parseNumber";
 import { fieldStatus, type Fit } from "./fit";
 import {
   CALIBRATION_STEPS,
+  STEP_GROUPS,
   MEASURED,
   atEnd,
   fromMeasured,
@@ -21,6 +22,7 @@ import { calibrationClearances, type CalibrationParams } from "./parts/calibrati
 import type { CalibrationSpec, ParamText, ParamValues, PartDefinition } from "./parts/types";
 import { statusText, valueText } from "./FitSettings";
 import { GUIDE_FAILED } from "./CalibrationGuide";
+import { SOURCE_URL } from "./links";
 
 // Saves values found in a step as calibrated fit settings.
 export type SaveResult = (values: Partial<Record<ClearanceKey, number>>) => void;
@@ -45,7 +47,7 @@ export function CalibrateIntro({
   disabled,
 }: {
   onDownloadAll: () => void;
-  problem: string | null; // why the four parts can't be made now
+  problem: string | null; // why the calibration parts can't be made now
   error: string | null; // why the last "Download all" failed, shown by its button
   disabled: boolean;
 }) {
@@ -59,11 +61,11 @@ export function CalibrateIntro({
       </p>
       <div className="intro-actions">
         <button type="button" className="button secondary" onClick={onDownloadAll} disabled={disabled}>
-          Download all four calibration parts
+          Download all calibration parts
         </button>
         <span className="note">
           {problem ??
-            "One file with the four parts side by side, each made with the settings chosen for it in its step. The file type is chosen above the download button."}
+            "One file with the calibration parts side by side, each made with the settings chosen for it in its step. The file type is chosen above the download button."}
         </span>
       </div>
       {error && (
@@ -82,34 +84,74 @@ const STATE_TEXT = {
   none: "not calibrated",
 };
 
+// The steps in their groups, numbered straight through. Each group spans as many
+// columns as it has steps, so the steps line up across the groups.
 export function StepList({ fit, current, onSelect }: { fit: Fit; current: StepId; onSelect: (id: StepId) => void }) {
   return (
-    <ol className="steps" aria-label="Calibration steps">
-      {CALIBRATION_STEPS.map((step, i) => {
-        const state = stepState(fit, step);
-        const values = step.settings.map((key) => valueText(fit, key)).join(" / ");
+    <div className="step-groups" role="group" aria-label="Calibration steps">
+      {STEP_GROUPS.map((group) => {
+        const steps = CALIBRATION_STEPS.filter((s) => s.group === group.id);
         return (
-          <li key={step.id}>
-            <button
-              type="button"
-              className="step"
-              aria-current={step.id === current ? "step" : undefined}
-              onClick={() => onSelect(step.id)}
-            >
-              <span className={`step-number ${state}`} aria-hidden="true">
-                {state === "calibrated" ? "✓" : i + 1}
-              </span>
-              <span className="step-text">
-                <span className="step-title">{step.title}</span>
-                <span className="step-status">
-                  {state === "none" ? STATE_TEXT.none : `${values} · ${STATE_TEXT[state]}`}
-                </span>
-              </span>
-            </button>
-          </li>
+          <section
+            key={group.id}
+            className="step-group"
+            style={{ "--steps": steps.length } as CSSProperties}
+            aria-labelledby={`steps-${group.id}`}
+          >
+            <h3 id={`steps-${group.id}`} className="step-group-title">
+              {group.title}
+            </h3>
+            <ol className="steps">
+              {steps.map((step) => (
+                <StepItem
+                  key={step.id}
+                  step={step}
+                  number={CALIBRATION_STEPS.indexOf(step) + 1}
+                  fit={fit}
+                  current={step.id === current}
+                  onSelect={onSelect}
+                />
+              ))}
+            </ol>
+          </section>
         );
       })}
-    </ol>
+    </div>
+  );
+}
+
+function StepItem({
+  step,
+  number,
+  fit,
+  current,
+  onSelect,
+}: {
+  step: CalibrationStep;
+  number: number;
+  fit: Fit;
+  current: boolean;
+  onSelect: (id: StepId) => void;
+}) {
+  const state = stepState(fit, step);
+  const values = step.settings.map((key) => valueText(fit, key)).join(" / ");
+  return (
+    <li>
+      <button
+        type="button"
+        className="step"
+        aria-current={current ? "step" : undefined}
+        onClick={() => onSelect(step.id)}
+      >
+        <span className={`step-number ${state}`} aria-hidden="true">
+          {state === "calibrated" ? "✓" : number}
+        </span>
+        <span className="step-text">
+          <span className="step-title">{step.title}</span>
+          <span className="step-status">{state === "none" ? STATE_TEXT.none : `${values} · ${STATE_TEXT[state]}`}</span>
+        </span>
+      </button>
+    </li>
   );
 }
 
@@ -153,6 +195,16 @@ interface StepDetailProps {
   guideFailed: boolean;
   onSave: SaveResult;
   onCentre: (value: number) => void;
+  check: CheckDownload | null; // the step's check set (step.check), if it has one
+}
+
+// The download of a step's check set, wired up by the app like its other downloads.
+export interface CheckDownload {
+  onDownload: () => void;
+  label: string;
+  fileName: string | null; // null while it can't be made
+  problem: string | null; // why it can't be made, or why the last download failed
+  disabled: boolean;
 }
 
 // The Test card (the guide's section for the step) and the Result card.
@@ -166,6 +218,7 @@ export function StepDetail({
   guideFailed,
   onSave,
   onCentre,
+  check,
 }: StepDetailProps) {
   return (
     <div className="step-detail">
@@ -196,7 +249,39 @@ export function StepDetail({
         ) : (
           <p className="note">Correct the part's settings to see its {part.calibration?.feature}s.</p>
         )}
+        {check && <CheckSetBox check={check} />}
       </section>
+    </div>
+  );
+}
+
+// Real parts made with the fit settings. For now only the underside step has a
+// check set (calibrationSteps.ts), so the words are written for its bricks.
+function CheckSetBox({ check }: { check: CheckDownload }) {
+  return (
+    <div className="check-set">
+      <h3>Check your settings</h3>
+      <p>
+        A 1 × 1, a 1 × 2 and a 2 × 2 brick and a 1 × 2 brick with holes, made with your fit settings, in one file. Try
+        each on genuine studs, put genuine bricks on them, and stack them on each other. The 2 × 2 holds a stud with a
+        tube and ribs, like the calibration bar's sections; the 1 × 1 with its walls alone, the 1 × 2 with its walls and
+        a bar. Put a genuine pin through the brick with holes: printed studs up, its hole lies across, unlike the hole
+        bar's. If the 1 × 1 or the 1 × 2 holds noticeably more or less firmly than the 2 × 2, or the pin fits
+        differently than in a printed beam,{" "}
+        <a href={`${SOURCE_URL}/issues`} target="_blank" rel="noreferrer">
+          please report it
+        </a>
+        : those parts may need a setting of their own.
+      </p>
+      <button type="button" className="button secondary" onClick={check.onDownload} disabled={check.disabled}>
+        {check.label}
+      </button>
+      {check.fileName && <p className="note">{check.fileName}</p>}
+      {check.problem && (
+        <p role="alert" className="alert">
+          {check.problem}
+        </p>
+      )}
     </div>
   );
 }

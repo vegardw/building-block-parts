@@ -100,7 +100,7 @@ Step by step, for a user who sets a beam to 5 holes:
 | `ready()` | `true` once the engine has loaded | showing "Loading the CAD engine…" separately from "Building model…" |
 | `createMesh(request)` | `MeshData { faces, edges }` | the preview |
 | `createBlob(request, format)` | the STEP or STL file as a `Blob` | the download |
-| `createSetBlob(items, format)` | several parts, each in a number of copies, in one file | "Download all four calibration parts", the parts list |
+| `createSetBlob(items, format)` | several parts, each in a number of copies, in one file | "Download all calibration parts", the parts list |
 | `heapSize()` | the engine's memory in bytes | replacing a worker whose memory has grown too much (see [Memory](#memory)) |
 
 Requests and results are plain data, copied between the threads; only the preview mesh's typed arrays are handed over
@@ -144,16 +144,21 @@ buttons move between them and a link opens the part or step it names. An address
   quantity, downloaded together as one file through `createSetBlob`. Adding a part already in the list raises its
   quantity; each line can be shown in the form again or removed, and removing or clearing offers Undo.
 - **Calibrate** (`#calibrate/hole`): one step per entry in `CALIBRATION_STEPS` (`src/calibrationSteps.ts`), shown as a list
-  with each step's state, worked out from the fit settings. A step has three parts: *Make* (the step's part in the
+  in groups (`STEP_GROUPS`: beams, pins and axles; bricks and plates; all parts), numbered straight through, with each
+  step's state, worked out from the fit settings. A step has three parts: *Make* (the step's part in the
   panel and the preview), *Test* (the step's section of the calibration guide) and *Result*: `Picker` draws the
   calibration part's features in the order they are on the part, as radio buttons, and `Measure` takes the test
   beam's measured width and height. Saving a result writes it into the fit settings with today's date. Picking a
-  feature at either end offers to set the part's middle value to it.
+  feature at either end offers to set the part's middle value to it. A step may also have a *check set*
+  (`check` on the step: real parts, made with the fit settings and downloaded together like a parts list through
+  `listSetFrom` and `createSetBlob`); the underside step's is a 1 × 1, a 1 × 2 and a 2 × 2 brick, which hold studs in
+  the ways the underside bar can't show (walls alone, walls and a bar), and a 1 × 2 brick with holes, whose hole lies
+  across, unlike the hole bar's.
 
-The **fit settings** (`src/fit.ts`) are the six clearance values as typed plus, for each, where it came from
+The **fit settings** (`src/fit.ts`) are the eight clearance values as typed plus, for each, where it came from
 (`calibration` or `hand`, with the date). The "Fit settings" button beside the section tabs (`FitButton`) opens them
 in a dialog (`FitSettings.tsx`). Saving them to a JSON file, loading one (`fitToFile`, `fitFromFile`: loading
-replaces all six, a value missing from the file becomes 0, and nothing changes if any value is wrong) and resetting
+replaces all of them, a value missing from the file becomes 0, and nothing changes if any value is wrong) and resetting
 them is one component, `FitFileActions`, shown in the dialog and in the "Your fit settings" box at the top of the
 Calibrate section (`FitCard`), where the values are made. Loading and resetting offer Undo instead of asking first. `#guide` opens the whole calibration guide over either section.
 
@@ -287,8 +292,10 @@ calibration part needs a little more; see [Calibration parts](#calibration-parts
 | `id` | Stable identifier. It is the key in `BUILDERS` and in saved settings, so don't rename it once released. |
 | `name` | Shown on the part's tile, and as the solid's name in a file made by "Download all". |
 | `params` | The parameters, in form order (see below). |
+| `view` | Optional. `"below"` for a part whose features face down as it is printed (the underside calibration bar): the preview first looks at it from below, lit from below (`viewFrom`, `lightFrom` in `cameraFit.ts`). |
 | `presets` | Optional. Quick picks above the form, e.g. `{ label: "Common pins", options: [{ label: "3L pin", params: { sideA: 0, sideB: 1 } }, ...] }`. Each sets the parameters it lists and leaves the others; the one the form matches is shown as pressed. |
-| `clearance` | The global clearance fields the part uses, e.g. `["hole", "width", "height"]`, or `[]` for none. Only these appear in the part's fit settings box. |
+| `clearance` | The global clearance fields the part can use, e.g. `["hole", "width", "height"]`, or `[]` for none. |
+| `uses(params)` | Optional. The ones these parameters use, when some depend on them: a pin uses the axle size only with an axle side and the stud diameter only with a stud, an axle the collar diameter only with a stop. `settingsUsed(part, params)` gives these, or all of `clearance` without it; only they appear in the part's fit settings box, count for the file name's "-adjusted" and for rebuilds, and are checked against their limits. |
 | `calibration` | Only on calibration parts: the setting the part finds, the name of one feature, the part's two ends (smaller values first), whether tabs mark the middle, and which feature to pick. Such a part is listed under Calibrate instead of Parts. |
 | `validate(params, clearance)` | Optional. Checks that the generic range checks can't express, e.g. "the wall beside the counterbore must stay at least `MIN_WALL` thick". Returns a message or `null`. |
 | `summary(params, clearance)` | Optional. The resulting dimensions, shown as tiles under "Resulting sizes" in the fit settings box. |
@@ -350,24 +357,31 @@ Things to know about replicad:
 - **Validation guards the kernel.** On degenerate input OpenCascade can fail with an unreadable error or never return
   at all (a zero-height beam hangs it), so the definition's checks must rule such input out before the builder runs.
 
-Builders share code where parts share features: `calibrationBody` in `calibration.build.ts` is the bar of the three
-calibration bars (a flat end, a rounded end and marker tabs at the middle), and `axleAlongZ` from `axle.build.ts`
-builds the axle, the axle sides of pins and the sections of the calibration axle.
+Builders share code where parts share features: `calibrationBody` in `calibration.build.ts` is the bar of the hole,
+pin, collar and stud calibration bars (a flat end, a rounded end and marker tabs at the middle), and `axleAlongZ` from
+`axle.build.ts` builds the axle, the axle sides of pins and the sections of the calibration axle, and
+`undersideCutters` from `brick.build.ts` hollows out the underside of bricks, plates and the underside calibration
+bar's sections.
 
 ### The current parts
 
 | Part (`id`) | Files in `src/parts/` | Clearance used | Notes |
 |---|---|---|---|
 | Beam (`beam`) | `beam.ts`, `beam.build.ts` | hole, width, height | 2 to 32 holes (`MAX_STUDS`, shared with the axle: the longest genuine axle is 32 studs); full (8 mm) or half height (4 mm, a thin liftarm), with the same holes. The half-height beam was a part of its own (`half-beam`) until 2026-10-31; its file name `half-beam-<n>-holes` is kept, and saved settings that had it selected open it as a half-height beam. |
-| Axle (`axle`) | `axle.ts`, `axle.build.ts` | axle, collar | 1 to 32 studs in half steps. Each end is plain, notched, a stop, a stop with a stud, or a stop one stud in. `axleAlongZ` is reused by the pin and the calibration axle. |
-| Pin (`pin`) | `pin.ts`, `pin.build.ts` | pin, collar, axle | A collar plus a side on each end from `PIN_SIDES`: a pin or friction pin of 1, 1.5 or 2 studs, an axle of 1 or 2 studs, or a stud; snap ends (lip and slots) or plain. Each half is built along +Z and side 1 turned round; pieces overlap 0.3 mm across the centre, except a collar towards an axle or stud. |
+| Axle (`axle`) | `axle.ts`, `axle.build.ts` | axle, collar, stud | 1 to 32 studs in half steps. Each end is plain, notched, a stop, a stop with a stud, or a stop one stud in. `axleAlongZ` is reused by the pin and the calibration axle. |
+| Pin (`pin`) | `pin.ts`, `pin.build.ts` | pin, collar, axle, stud | A collar plus a side on each end from `PIN_SIDES`: a pin or friction pin of 1, 1.5 or 2 studs, an axle of 1 or 2 studs, or a stud; snap ends (lip and slots) or plain. Each half is built along +Z and side 1 turned round; pieces overlap 0.3 mm across the centre, except a collar towards an axle or stud. |
+| Brick with holes (`brick-with-holes`) | `brickWithHoles.ts`, `brickWithHoles.build.ts` | hole, stud, underside, width, height | 1 to 16 studs; the beam's hole across it between each two studs (under the stud of a 1 × 1), 5.8 above the bottom. A plain brick one stud wide (`undersideCutters`) with a block boss round each hole, taken out of the underside's cutter (a round one would meet the round bars in a curve that isn't a line, circle or ellipse); three booleans. |
+| Brick (`brick`), Plate (`plate`) | `brick.ts`, `plate.ts`, `brick.build.ts` | stud, underside, width, height | 1 to 16 studs across and 1 to 32 along, either way round (laid along the longer side); 9.6 or 3.2 mm tall. One definition (`brickPart`) and one builder for both. Two booleans whatever the size: the studs fused in one, the underside cut in one (`undersideCutters`: the inside drawn with its ribs, tubes and bars left out, and the tubes' bores). |
 | Hole calibration bar (`calibration`) | `calibration.ts`, `calibration.build.ts` | none | Holes 8 mm apart. |
 | Calibration axle (`axle-calibration`) | `axleCalibration.ts`, `axleCalibration.build.ts` | none | One-stud sections growing from a bevelled small end to a stop; each reaches 0.3 mm into the next. The id is kept from the earlier axle calibration bar so saved settings still apply. |
 | Pin calibration bar (`pin-calibration`) | `pinCalibration.ts`, `pinCalibration.build.ts` | none | Round stubs 16 mm apart. |
 | Collar calibration bar (`collar-calibration`) | `collarCalibration.ts`, `collarCalibration.build.ts` | none | Round buttons 8 mm apart. |
+| Stud calibration bar (`stud-calibration`) | `studCalibration.ts`, `studCalibration.build.ts` | none | Studs 8 mm apart on a 3.2 mm bar (a plate). |
+| Underside calibration bar (`underside-calibration`) | `undersideCalibration.ts`, `undersideCalibration.build.ts` | none | A plate two studs wide in 2 × 2 sections, each a 2 × 2 plate's underside (tube, walls, a rib at each stud), 7 by default. Each section's cavity is drawn with its ribs and tube left out and all are cut in one boolean (with the bores); seen from below (`view`). |
 
 The calibration parts use no clearance settings because they exist to find them: each feature has its own
-graduated size change (by default −0.20 to +0.20 mm in 0.05 mm steps). All four share three parameters, made by the
+graduated size change (by default −0.20 to +0.20 mm in 0.05 mm steps; ±0.15 mm on the underside bar, which keeps
+it 120 mm long). All six share three parameters, made by the
 helpers in `calibration.ts`: features per side (`perSide`), the step, and the middle value (`centre`, 0 by default),
 which shifts the whole range so a second part can look beyond the end of the first or refine a result. Every value
 must stay within the part's limit (`rangeProblem`), and a part centred off nominal gets `-plus-0.20` or
@@ -404,33 +418,37 @@ and every fit setting is found by some step.
 ## Clearance
 
 Printers and CNC machines don't make parts at exactly the drawn size; holes, for example, often come out slightly too
-small. The clearance settings correct for that. There are six global values, set once per machine and shared by every
-part that uses them:
+small. The clearance settings correct for that. There are eight global values, set once per machine and shared by
+every part that uses them:
 
 | Field | Changes | Limit |
 |---|---|---|
 | `hole` | the diameters of bores and counterbores | ±1 mm |
-| `width` | the beam width | ±1 mm |
-| `height` | the beam height | ±1 mm |
-| `axle` | the axle's cross and stud (also a pin's axle side) | ±0.5 mm |
-| `pin` | a pin's shaft, lips, friction ribs and a half pin's stud | ±0.5 mm |
+| `width` | a part's outside width (the beam width) | ±1 mm |
+| `height` | a part's height (the beam height) | ±1 mm |
+| `axle` | the axle's cross (also a pin's axle side) | ±0.5 mm |
+| `pin` | a pin's shaft, lips and friction ribs | ±0.5 mm |
 | `collar` | pin collars and axle stops that seat in a counterbore | ±0.5 mm |
+| `stud` | every stud: on bricks and plates, a half pin's and an axle's | ±0.5 mm |
+| `underside` | the stud size an underside is made for: tubes smaller by the value, rib faces out by half | ±0.5 mm |
 
-Each value is a change to the nominal dimension in millimetres; positive makes the feature bigger. Hole spacing and
-lengths are never changed. The fields, with their labels, hints and limits, are defined once in `CLEARANCE_FIELDS` in
+Each value is a change to the nominal dimension in millimetres; positive makes the feature bigger (for `underside`,
+the room for the stud). The spacing of holes and studs, and axle and pin lengths, are never changed; outside sizes are
+(`width` moves a brick's or beam's ends too). The fields, with their labels, hints and limits, are defined once in `CLEARANCE_FIELDS` in
 `src/spec.ts`. A builder applies a value by adding it to the nominal size, e.g. `SPEC.holeD + clearance.hole`.
 
 In the UI the clearance values are called **fit settings** (see [The user interface](#the-user-interface)). How the
 UI handles them (`src/clearance.ts`, `src/fit.ts`, `FitSettings.tsx` and `App.tsx`):
 
-- **Only the fields a part uses count.** `readClearance(text, part.clearance)` reads those fields; the others count as
-  0 and are never invalid, so a bad value in a field the current part ignores can't block it.
+- **Only the fields a part uses count.** `readClearance(text, settingsUsed(part, params))` reads the fields the part
+  uses with its parameters (`uses`, see above); the others count as 0 and are never invalid, so a bad value in a field
+  the current part ignores can't block it, and a 2L pin isn't "adjusted" by a stud diameter it doesn't have.
 - **Unused fields don't trigger rebuilds.** The app keeps the same clearance object as long as its values don't
   change, so editing a field the current part ignores doesn't start a new build.
 - **The values in use are always visible.** They change every download, so the box above the download button lists
   the ones the part uses with their origin (calibrated with the date, set by hand, or not calibrated), links to the
   Calibrate step for one that isn't calibrated, and says when the file name will end in `-adjusted`. The header's
-  button shows how many of the six aren't zero, or, while any is invalid, how many are invalid (`clearanceCounts`
+  button shows how many of them aren't zero, or, while any is invalid, how many are invalid (`clearanceCounts`
   reads each field on its own, so one bad value doesn't hide the others).
 - **Where each value came from.** A value saved from the Calibrate section is `calibration`, one typed in the dialog
   `hand`, each with the date (`Origin`). Data saved before origins existed has none: a non-zero value then shows as
@@ -442,7 +460,8 @@ UI handles them (`src/clearance.ts`, `src/fit.ts`, `FitSettings.tsx` and `App.ts
 ### Adding a clearance field
 
 1. Add the field to `Clearance`, `NO_CLEARANCE` and `CLEARANCE_FIELDS` in `src/spec.ts`, with its limit.
-2. List it in the `clearance` of the parts that use it, and apply it in their builders.
+2. List it in the `clearance` of the parts that use it (and in their `uses`, if they have one), and apply it in their
+   builders.
 3. Describe it in `docs/calibration.md`; a test checks that the guide names every setting.
 4. Add it to a step in `CALIBRATION_STEPS` (or a new step with its calibration part); a test checks that every setting
    is found by some step.
@@ -556,7 +575,16 @@ runs, and two things keep it in hand:
   variant, the heap now ends at 100 MB for the beam, the axle and the pin and collar bars, 127 MB for the hole bar,
   163 MB for the friction pin and 199 MB for the calibration axle; before, up to 239 MB for the pin and 595 MB for the
   calibration axle. `tests/memory.test.ts` builds the heaviest parts ten times each and checks the heap stays under
-  256 MB.
+  256 MB. The underside calibration bar is one boolean, but its longest (15 sections, about 600 faces) still keeps
+  about 6 MB a build: it cuts each section's cavity, drawn with its ribs and tube left out, where a box fused for
+  every rib kept about 30 MB, and joining extrusions in one fuse kept more than cutting. Bricks and plates are two
+  booleans and bricks with holes three; common sizes (up to about 8 × 16) build in 30 to 500 ms and keep about 1.5 MB
+  a build on average, but the largest, a 16 × 32 (512 studs, 465 tubes), takes about 3 s and keeps 50 to 100 MB a
+  build, so the worker is replaced after a few of them. Making it one cut instead (a block with the room around the
+  studs cut away too) was no better. Different parts in one engine also fragment its heap: after ten builds of the
+  longest underside bar, the same brick builds grew it to 344 MB instead of 163. So `tests/memoryBricks.test.ts`
+  checks the stud and underside bars, and `tests/memoryBrickParts.test.ts` common bricks, plates and bricks with
+  holes, each in a fresh engine.
 - **A fresh worker when the heap passes 512 MB** (`src/engine.ts`, `RECYCLE_AT` in `App.tsx`). After every successful job the
   page asks the worker for its heap size (`heapSize`); past the limit it ends that worker and starts another, between
   jobs, so nothing is lost. The next build waits about 0.3 s while the engine loads from the cache; the previews kept
@@ -593,8 +621,11 @@ The preview uses three.js through React Three Fiber (R3F: React components for t
   it must happen before the camera is created.
 - **Starting view.** The camera starts at `VIEW_FROM` (front left, above) and the light at `LIGHT_FROM` (same side),
   both in `cameraFit.ts`: +X runs to the right, so a part's first end shows on the left. A test checks the direction.
+  A part with `view: "below"` (the underside calibration bar) is seen and lit from below instead, the same direction
+  mirrored in Z (`viewFrom`, `lightFrom`); the view turns to the part's side whenever it changes, like a reset. Other
+  parts look and are lit exactly as before.
 - **Help in the view** (`Viewer.tsx`): a "Reset view" button (it changes `reset` on `ThreeContext`, and `CameraControls`
-  then fits the model from `VIEW_FROM` whatever the user did), a line on how to move the view (touch wording when
+  then fits the model from the starting direction whatever the user did), a line on how to move the view (touch wording when
   `pointer: coarse`), and the model's size along X, Y and Z from `boundsOf` (the mesh, so shown to 0.1 mm).
 - **`ReplicadMesh.tsx`** draws the faces and the edge lines. Each new mesh gets its own geometry, made by wrapping the
   typed arrays in `BufferAttribute`s (no copy); the one it replaces is disposed, which frees its graphics memory.
@@ -713,6 +744,9 @@ The tests follow three principles:
 | `preview.test.ts` | The preview mesh: handed over rather than copied, coarser than the STL mesh but within 0.01 mm of the part, a later STL export unchanged, and a well-formed mesh with edges for every part. |
 | `booleans.test.ts` | `fuseAll` and `cutAll`: overlapping pieces joined into one solid of the right volume with its faces merged again, overlapping tools (a bore and its counterbore) cut at once, a single shape given back unchanged. |
 | `memory.test.ts` | In a fresh engine, ten builds each of the parts with the most booleans (friction pin, hole bar, calibration axle, pin bar) keep the heap under 256 MB (it ends at about 199 MB; when it joined its sections one by one, the calibration axle alone reached 287 MB in ten builds). |
+| `memoryBricks.test.ts`, `memoryBrickParts.test.ts` | Each in another fresh engine: ten builds each of the longest stud and underside bars (it ends at about 163 MB), and of a 2 × 4 and a 1 × 16 brick, a 4 × 4 plate and a 1 × 16 brick with holes (about 163 MB), keep the heap under 256 MB. |
+| `brickWithHoles.test.ts` | Brick with holes: 1 to 16 studs, its holes' positions, the walls round the counterbores (the hole and height settings' limits), names and size tiles; in the STEP, a 1 × 4's bores, counterbores, block bosses, bars, walls and studs, a solid 1 × 1 with its room for a stud, the fit settings applied (the hole stays 5.8 above the bottom), and lengths at the setting limits as one exact solid. |
+| `brick.test.ts` | Brick and plate: sizes 1 to 16 across and 1 to 32 along, either way round with the same file name, quick picks, the note and the size tiles; in the STEP, the outside, studs, ribbed walls and tubes of a 2 × 4, the walls and bars of a 1 × 4, a 1 × 1 plate, a 4 × 4 plate's nine tubes, every fit setting applied, and odd sizes at the setting limits as one exact solid. |
 | `engine.test.ts` | Replacing the worker: kept below the limit, replaced at it (the old one ended, jobs going to the new one), error events from whichever worker is current, a worker that can't report its memory left alone. |
 | `stl.test.ts` | STL files: a binary mesh at the part's exact size (within the mesh tolerance), with the fit settings applied, for every part; several parts in one mesh, in a row on z = 0; a set meshes each part once (30 copies, one `mesh()`, no `blobSTL`) and has the triangle count, area and volume of OpenCascade's own STL of each part times its copies. |
 | `binaryStl.test.ts` | The STL writer: header, facet normals, the attribute, copies shifted, several meshes, a degenerate triangle. |
@@ -729,13 +763,15 @@ The tests follow three principles:
 | `pinCalibration.test.ts` | Pin calibration bar: its limit, and every stub at its diameter (4.8 mm plus its change), 16 mm apart. |
 | `axleCalibration.test.ts` | Calibration axle: its limit (exactly 0.5 allowed); in the STEP, a step every 8 mm, the bevelled small end and the stop's faces, every section's arm sides and tips at its size, one solid. |
 | `collarCalibration.test.ts` | Collar calibration bar: its limit, and every button at its diameter (6.0 mm plus its change), 0.6 mm tall. |
-| `calibrationGuide.test.ts` | The guide names every setting, calibration part and app button it refers to, quotes the current numbers, has no relative links, and renders a section for every step. |
+| `studCalibration.test.ts` | Stud calibration bar: its limit, and every stud at its diameter (4.85 mm, as genuine brick studs measure, plus its change), 8 mm apart, 1.8 mm tall on a 3.2 mm bar. |
+| `undersideCalibration.test.ts` | Underside calibration bar: seven sections by default, its limit, and in every section the tube (6.514 mm less the value) with its Ø4.8 bore and the ribs' faces 6.4 mm plus half the value from the centre; the walls, the 1.0 top, both ends and the 120 mm length. |
+| `calibrationGuide.test.ts` | The guide names every setting, calibration part and app button it refers to, quotes the current numbers, links to the project's issues page, has no relative links, and renders a section for every step. |
 | `clearance.test.ts` | Reading clearance text: invalid fields and messages, adjustments, ignoring fields a part doesn't use, the header's adjusted and invalid counts, data saved before newer fields existed. |
 | `fit.test.ts` | Fit settings: typed and calibrated values, status, saved origins, the settings file written and read back, values written by hand (tiny, a hair beyond a limit), and every way a file is refused. |
-| `calibrationSteps.test.ts` | The steps match the calibration parts and cover every setting; step state; measured sizes to settings; the guide's sections. |
+| `calibrationSteps.test.ts` | The steps match the calibration parts and cover every setting, and come group by group; the underside step's check set; step state; measured sizes to settings; the guide's sections. |
 | `settings.test.ts`, `route.test.ts` | Saved settings with their fallbacks, the move of calibration parts to steps and of the half-height beam into the beam; the address of each section, part and step. |
 | `kernelError.test.ts` | Readable messages for kernel failures, synchronous and asynchronous, including a real OpenCascade failure named by its exception (`Standard_ConstructionError`); the out-of-memory message; the engine-load messages (old browser, memory, connection). |
-| `orientation.test.ts` | Parts lie along X with their first end at −X: an axle's End 1, a pin's Side 1, the calibration bars' flat end and the calibration axle's small end. |
+| `orientation.test.ts` | Parts lie along X with their first end at −X: an axle's End 1, a pin's Side 1, the calibration bars' flat end (the underside bar's too) and the calibration axle's small end; a brick's longer side, whichever way its size is given. |
 | `spec.test.ts` | The nominal dimensions are the right fractions of the 8 mm module; the measured counterbore and collar sizes; `MIN_WALL` beside the nominal counterbore. |
 | `parseNumber`, `shapes`, `shapeCache`, `scheduler`, `storage`, `cameraFit`, `webgl` (`.test.ts`) | Unit tests of the pure modules (the scheduler's order and one-at-a-time rule; the renamed storage key). |
 | `headers.test.ts` | The `_headers` reader (`scripts/headersFile.ts`), and `public/_headers`: each header set by one rule only, the security headers on every path, the Content-Security-Policy's sources, the cache rules, and an `index.html` without inline styles or scripts. |
@@ -754,7 +790,8 @@ Content-Security-Policy applies. Each test fails on a page error, a console erro
   where the browser has no WebGL), and the downloaded STEP file has only exact faces and edges and measures as
   `expectedBeam(5)` with an 8 mm pitch (`measureBeam`, the same code as the unit tests);
 - the same beam as STL: a mesh within 0.003 mm of the beam's size;
-- Calibrate: "Download all four calibration parts" gives one STEP file with four exact solids;
+- Calibrate: "Download all calibration parts" gives one STEP file with six exact solids, and the underside step's
+  "Download the check set" one with four bricks;
 - a browser without WebAssembly SIMD (simulated): the message, no "Reload page", the form still there, and no request
   for the engine or the worker.
 

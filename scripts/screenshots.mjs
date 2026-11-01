@@ -10,8 +10,13 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const PORT = 4178;
 const BASE = `http://localhost:${PORT}/`;
 const BEAM = "#parts/beam?holes=7&height=0";
-// The parts on the card: a beam, an axle with a stop, a 3L friction pin.
-const CARD_PARTS = { beam: BEAM, axle: "#parts/axle?length=6&endA=0&endB=2", pin: "#parts/pin?sideA=2&sideB=3&ends=0" };
+// The parts on the card: a beam, a 2 × 4 brick, an axle with a stop, a 3L friction pin.
+const CARD_PARTS = {
+  beam: BEAM,
+  brick: "#parts/brick?width=2&length=4",
+  axle: "#parts/axle?length=6&endA=0&endB=2",
+  pin: "#parts/pin?sideA=2&sideB=3&ends=0",
+};
 
 async function waitForServer() {
   for (let i = 0; i < 150; i++) {
@@ -84,7 +89,7 @@ const CARD = `<!doctype html><html><head><meta charset="utf-8"><style>
   canvas { position: absolute; }
 </style></head><body>
   <div class="text"><h1>Building Block Parts Generator</h1>
-    <p>Beams, axles and pins as STEP files with true curves, for 3D printing and CNC.</p></div>
+    <p>Beams, pins, axles, bricks and plates as STEP files with true curves, for 3D printing and CNC.</p></div>
   <div class="tags"><span>STEP</span><span>STL</span><span>Calibrated fit</span></div>
   <div class="panel"></div>
 </body></html>`;
@@ -128,9 +133,10 @@ async function card(browser) {
   for (const [name, hash] of Object.entries(CARD_PARTS)) renders[name] = await renderPart(browser, hash);
   const page = await browser.newPage({ viewport: { width: 1200, height: 630 } });
   await page.setContent(CARD);
-  await page.evaluate(place, [renders.beam, 652, 80, 468, 230]);
-  await page.evaluate(place, [renders.axle, 652, 330, 290, 220]);
-  await page.evaluate(place, [renders.pin, 958, 350, 170, 190]);
+  await page.evaluate(place, [renders.beam, 652, 72, 468, 190]);
+  await page.evaluate(place, [renders.brick, 652, 286, 250, 170]);
+  await page.evaluate(place, [renders.pin, 930, 300, 190, 140]);
+  await page.evaluate(place, [renders.axle, 652, 468, 468, 92]);
   await page.screenshot({ path: join(root, "public", "og-image.png") });
   await page.close();
 }

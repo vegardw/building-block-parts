@@ -35,10 +35,10 @@ describe("parts lie along X with their first end at -X", () => {
   });
 
   // The flat end is a plane at -X; the rounded end is a half cylinder (radius 3.6, along Z) at +X.
-  it.each(["calibration", "pin-calibration", "collar-calibration"])(
+  it.each(["calibration", "pin-calibration", "collar-calibration", "stud-calibration"])(
     "%s: flat end at -X, rounded end at +X",
     async (id) => {
-      const pitch = { calibration: 8, "pin-calibration": 16, "collar-calibration": 8 }[id]!;
+      const pitch = { calibration: 8, "pin-calibration": 16, "collar-calibration": 8, "stud-calibration": 8 }[id]!;
       const end = 4 * pitch + 3.6; // default 4 features per side
       const g = await geometry(id);
       expect(g.planes.some((p) => alongX(p.normal) && near(p.origin[0], -end))).toBe(true);
@@ -47,6 +47,33 @@ describe("parts lie along X with their first end at -X", () => {
       expect(rounded.map((c) => c.origin[0])).toEqual([4 * pitch]);
     },
   );
+
+  // Two studs wide: the rounded end (radius 7.9) lies beyond the last section's wall.
+  it("underside calibration bar: flat end at -X, rounded end at +X", async () => {
+    const end = 3 * 16 + 7.9; // default 3 sections per side, 16 mm apart
+    const g = await geometry("underside-calibration");
+    expect(g.planes.some((p) => alongX(p.normal) && near(p.origin[0], -end))).toBe(true);
+    const rounded = g.cylinders.filter((c) => alongZ(c.axis) && near(c.radius, 7.9));
+    expect(rounded.map((c) => c.origin[0])).toEqual([end]);
+  });
+
+  // No ends to tell apart, but the longer side lies along X however the size is given.
+  it.each([
+    [2, 4],
+    [4, 2],
+  ])("brick %s × %s: its 4 studs along X", async (width, length) => {
+    const g = await geometry("brick", { width, length });
+    const ends = g.planes.filter((p) => alongX(p.normal)).map((p) => Math.abs(p.origin[0]));
+    expect(Math.max(...ends)).toBeCloseTo(15.9, 6); // 4 × 8 − 0.2, halved
+  });
+
+  it("brick with holes: along X, its holes across it (along Y)", async () => {
+    const g = await geometry("brick-with-holes", { length: 4 });
+    const ends = g.planes.filter((p) => alongX(p.normal)).map((p) => Math.abs(p.origin[0]));
+    expect(Math.max(...ends)).toBeCloseTo(15.9, 6);
+    const bores = g.cylinders.filter((c) => Math.abs(c.axis[1]) === 1 && near(c.radius, 2.4));
+    expect(bores.length).toBeGreaterThan(0);
+  });
 
   it("calibration axle: small end at -X, stop at +X", async () => {
     const g = await geometry("axle-calibration");

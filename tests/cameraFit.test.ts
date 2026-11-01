@@ -1,5 +1,14 @@
 import { describe, it, expect } from "vitest";
-import { requiredDistance, shouldRefit, boundsOf, MARGIN, VIEW_FROM, LIGHT_FROM } from "../src/cameraFit";
+import {
+  requiredDistance,
+  shouldRefit,
+  boundsOf,
+  viewFrom,
+  lightFrom,
+  MARGIN,
+  VIEW_FROM,
+  LIGHT_FROM,
+} from "../src/cameraFit";
 
 describe("requiredDistance", () => {
   it("uses the vertical field of view in a wide viewport", () => {
@@ -70,5 +79,27 @@ describe("starting view", () => {
     expect(z).toBeGreaterThan(0);
     const dot = LIGHT_FROM[0] * x + LIGHT_FROM[1] * y + LIGHT_FROM[2] * z;
     expect(dot).toBeGreaterThan(0);
+  });
+});
+
+// A part whose features face down (the underside calibration bar) is seen from below.
+describe("starting view from below", () => {
+  const [x, y, z] = viewFrom("below");
+  const right = [-y, x, 0] as const;
+
+  it("still shows +X on the right", () => {
+    expect(right[0]).toBeGreaterThan(0);
+    expect(Math.abs(right[0])).toBeGreaterThan(Math.abs(right[1]));
+  });
+
+  it("looks from below, with the light on the camera's side", () => {
+    expect(z).toBeLessThan(0);
+    const light = lightFrom("below");
+    expect(light[0] * x + light[1] * y + light[2] * z).toBeGreaterThan(0);
+  });
+
+  it("leaves the usual view as it was", () => {
+    expect(viewFrom("above")).toEqual(VIEW_FROM);
+    expect(lightFrom("above")).toEqual(LIGHT_FROM);
   });
 });

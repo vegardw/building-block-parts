@@ -14,7 +14,11 @@ import { buildAxle } from "./axle.build";
 import { buildAxleCalibration } from "./axleCalibration.build";
 import { buildCollarCalibration } from "./collarCalibration.build";
 import { buildPin } from "./pin.build";
+import { buildBrick, buildPlate } from "./brick.build";
+import { buildBrickWithHoles } from "./brickWithHoles.build";
 import { buildPinCalibration } from "./pinCalibration.build";
+import { buildStudCalibration } from "./studCalibration.build";
+import { buildUndersideCalibration } from "./undersideCalibration.build";
 
 // Method syntax makes the parameter types bivariant, so builders that take
 // specific parameter types (e.g. { holes: number }) fit in the shared record.
@@ -27,7 +31,12 @@ export const BUILDERS: Record<string, Builder> = {
   "axle-calibration": buildAxleCalibration,
   "collar-calibration": buildCollarCalibration,
   pin: buildPin,
+  brick: buildBrick,
+  "brick-with-holes": buildBrickWithHoles,
+  plate: buildPlate,
   "pin-calibration": buildPinCalibration,
+  "stud-calibration": buildStudCalibration,
+  "underside-calibration": buildUndersideCalibration,
 };
 
 export function buildPart({ partId, params, clearance }: BuildRequest): Shape3D {

@@ -18,7 +18,7 @@ export function testSideCombinations(ends: number, name: string) {
     it.each(cases)("%s + %s: one solid, analytic, right length", async (_a, _b, sideA, sideB) => {
       for (const size of [-0.3, 0.3]) {
         const p = { sideA, sideB, ends };
-        const clearance = { ...NO_CLEARANCE, pin: size, collar: size, axle: size };
+        const clearance = { ...NO_CLEARANCE, pin: size, collar: size, axle: size, stud: size };
         expect(validatePart(part, p, clearance)).toBeNull();
         const { step, stats, geometry } = await exportPin(p, clearance);
         expect(solids(step)).toBe(1);

@@ -1,7 +1,7 @@
 import "./openCascade";
 import { describe, it, expect } from "vitest";
 
-import { validatePart } from "../src/parts/index";
+import { validatePart, settingsUsed } from "../src/parts/index";
 import { PIN_PRESETS, pinLength, PLAIN } from "../src/parts/pin";
 import { NO_CLEARANCE } from "../src/spec";
 import { side, part, params, r3, isAxis, measurePin, exportPin, solids } from "./pinGeometry";
@@ -39,8 +39,20 @@ describe("pin parameters", () => {
     expect(validatePart(part, params({ ends: 5 }))).toMatch(/Choose a value for Pin ends/);
   });
 
-  it("uses the pin, collar and axle clearances", () => {
-    expect(part.clearance).toEqual(["pin", "collar", "axle"]);
+  it("can use the pin, collar, axle and stud clearances", () => {
+    expect(part.clearance).toEqual(["pin", "collar", "axle", "stud"]);
+  });
+
+  // Only those that change it, so a 2L pin isn't "adjusted" by the stud diameter.
+  it("uses the axle size only with an axle side and the stud diameter only with a stud", () => {
+    expect(settingsUsed(part, params({}))).toEqual(["pin", "collar"]);
+    expect(settingsUsed(part, params({ sideA: FRIC1, sideB: PIN2 }))).toEqual(["pin", "collar"]);
+    expect(settingsUsed(part, params({ sideB: AXLE1 }))).toEqual(["pin", "collar", "axle"]);
+    expect(settingsUsed(part, params({ sideB: STUD }))).toEqual(["pin", "collar", "stud"]);
+    expect(settingsUsed(part, params({ sideA: 99 }))).toEqual(part.clearance); // an unknown side: all
+    // An unused setting out of range doesn't block the part; a used one does.
+    expect(validatePart(part, params({}), { ...NO_CLEARANCE, stud: 5 })).toBeNull();
+    expect(validatePart(part, params({ sideB: STUD }), { ...NO_CLEARANCE, stud: 5 })).toMatch(/Stud diameter/);
   });
 
   it("names the file after its sides", () => {
@@ -138,6 +150,13 @@ describe("pin dimensions in the exported STEP file", () => {
     const m = measurePin((await exportPin(params({ ends: PLAIN }))).geometry);
     expect(m.xPlanes).toEqual([-8, -0.8, 0.8, 8]);
     expect(m.radii).toEqual([1.6, 2.4, 3]);
+  });
+
+  // The stud sits in a brick's underside, so it takes the stud diameter, not the pin diameter.
+  it("stud diameter changes a half pin's stud, pin diameter its shaft and lip", async () => {
+    const clearance = { ...NO_CLEARANCE, pin: -0.1, stud: 0.2 };
+    const { geometry } = await exportPin(params({ sideB: STUD }), clearance);
+    expect(measurePin(geometry).radii).toEqual([1.6, 2.35, 2.5, 2.55, 3]); // shaft 2.35, stud 2.5, lip 2.55
   });
 
   it("pin diameter changes shaft and lip, collar diameter the collar, axle size the cross", async () => {

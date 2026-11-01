@@ -52,8 +52,8 @@ and a section in [docs/calibration.md](docs/calibration.md), which the app shows
 ## Names and trademarks
 
 The project is not affiliated with the LEGO Group. Don't use "LEGO" or "Technic" in names, page titles, headings, file
-names or keywords. Describing compatibility in body text is fine ("compatible with LEGO® Technic™"), with the
-disclaimer that the README uses. Say "beam (liftarm)".
+names or keywords. Describing compatibility in body text is fine ("compatible with LEGO® bricks, LEGO® Technic™"),
+with the disclaimer that the README uses. Say "beam (liftarm)".
 
 ## Licence
 

@@ -3,19 +3,20 @@
 // waiting for it.
 import ThreeContext from "./ThreeContext";
 import ReplicadMesh from "./ReplicadMesh";
-import type { Bounds } from "./cameraFit";
+import type { Bounds, ViewSide } from "./cameraFit";
 import type { MeshData } from "./parts/types";
 
 interface SceneProps {
   mesh: MeshData;
   bounds: Bounds | null;
   reset: number; // change it to return to the starting view
+  side: ViewSide; // where the starting view looks from
   onContextLost: () => void;
 }
 
-export default function Scene({ mesh, bounds, reset, onContextLost }: SceneProps) {
+export default function Scene({ mesh, bounds, reset, side, onContextLost }: SceneProps) {
   return (
-    <ThreeContext bounds={bounds} reset={reset} onContextLost={onContextLost}>
+    <ThreeContext bounds={bounds} reset={reset} side={side} onContextLost={onContextLost}>
       <ReplicadMesh edges={mesh.edges} faces={mesh.faces} />
     </ThreeContext>
   );

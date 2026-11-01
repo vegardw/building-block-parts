@@ -103,17 +103,26 @@ test("a beam as STL, alone and twice from the parts list: meshes of the right si
   expect(two.volume / (2 * one.volume)).toBeCloseTo(1, 6);
 });
 
-test("Calibrate: all four calibration parts in one STEP file", async ({ page }) => {
+test("Calibrate: all six calibration parts in one STEP file, and the brick check set", async ({ page }) => {
   await page.goto("/#calibrate/hole");
-  await expect(page.getByRole("button", { name: "Download all four calibration parts" })).toBeEnabled({
+  await expect(page.getByRole("button", { name: "Download all calibration parts" })).toBeEnabled({
     timeout: 90_000,
   });
-  const { file, bytes } = await download(page, "Download all four calibration parts");
+  const { file, bytes } = await download(page, "Download all calibration parts");
   expect(file.suggestedFilename()).toBe("calibration-parts.step");
   const text = bytes.toString("utf8");
-  expect(text.match(/MANIFOLD_SOLID_BREP/g)).toHaveLength(4);
+  expect(text.match(/MANIFOLD_SOLID_BREP/g)).toHaveLength(6);
   const stats = analyseStep(text);
   expect(Object.keys(stats.faceTypes).filter((t) => !EXACT_FACES.includes(t))).toEqual([]);
+
+  // The underside step's check set: four bricks made with the fit settings (nominal here).
+  await page.goto("/#calibrate/underside");
+  await expect(page.getByRole("button", { name: "Download the check set" })).toBeEnabled();
+  const check = await download(page, "Download the check set");
+  expect(check.file.suggestedFilename()).toBe("brick-check-set.step");
+  const checkText = check.bytes.toString("utf8");
+  expect(checkText.match(/MANIFOLD_SOLID_BREP/g)).toHaveLength(4);
+  expect(Object.keys(analyseStep(checkText).faceTypes).filter((t) => !EXACT_FACES.includes(t))).toEqual([]);
 });
 
 test("a browser without WebAssembly SIMD gets a message, and no engine download", async ({ page }) => {

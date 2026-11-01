@@ -11,7 +11,7 @@ import {
   type ClearanceState,
   type ClearanceText,
 } from "./clearance";
-import { REGULAR_PARTS, requirePart, parseParams, validatePart, paramProblem } from "./parts/index";
+import { REGULAR_PARTS, requirePart, parseParams, validatePart, paramProblem, settingsUsed } from "./parts/index";
 import type { BuildRequest, FileFormat, MeshData, ParamText, SetItem } from "./parts/types";
 import type { CadApi } from "./worker";
 import { createScheduler, SKIPPED } from "./scheduler";
@@ -121,7 +121,7 @@ interface PartSet {
   problem: string | null;
 }
 
-// The four calibration parts with their current settings, for "Download all".
+// The calibration parts with their current settings, for "Download all".
 function calibrationSetFrom(paramText: Record<string, ParamText>): PartSet {
   const items: SetItem[] = [];
   for (const s of CALIBRATION_STEPS.filter((s) => !s.params)) {
@@ -142,7 +142,7 @@ function listSetFrom(list: ListItem[], fitText: ClearanceText): PartSet & { adju
   for (const item of list) {
     const p = requirePart(item.partId);
     const { name, detail } = describeItem(item);
-    const state = readClearance(fitText, p.clearance);
+    const state = readClearance(fitText, settingsUsed(p, item.params));
     if (!state.clearance) return { items: null, problem: `${state.problem} Correct the fit settings first.`, adjusted };
     const bad = validatePart(p, item.params, state.clearance);
     if (bad) return { items: null, problem: `${name}, ${detail}: ${bad}`, adjusted };
@@ -256,16 +256,17 @@ export default function App() {
     guideFromLink.current = false;
   };
 
-  // Only the fields this part uses; the others are 0 and can't block it.
+  // Only the fields this part uses with these parameters; the others are 0 and can't block it.
+  const used = useMemo(() => settingsUsed(part, parsed), [part, parsed]);
   const clearanceState = useMemo(
-    () => (calibrating ? NOMINAL : readClearance(fit.text, part.clearance)),
-    [calibrating, fit.text, part],
+    () => (calibrating ? NOMINAL : readClearance(fit.text, used)),
+    [calibrating, fit.text, used],
   );
   const { clearance } = clearanceState;
   // Same values, same object: editing a field this part ignores mustn't rebuild it.
   const clearanceValues = clearance && JSON.stringify(clearance);
   const effectiveClearance = useMemo(() => clearance, [clearanceValues]); // eslint-disable-line react-hooks/exhaustive-deps
-  const usesClearance = !calibrating && part.clearance.length > 0;
+  const usesClearance = !calibrating && used.length > 0;
 
   const problem = effectiveClearance ? validatePart(part, parsed, effectiveClearance) : clearanceState.problem;
   // A parameter outside its range is shown under its field; other problems by the download button.
@@ -285,11 +286,15 @@ export default function App() {
 
   const summary = usesClearance && clearance ? (part.summary?.(parsed, clearance) ?? null) : null;
   // The file name, shown under the download button before downloading.
-  const adjusted = request !== null && part.clearance.some((k) => request.clearance[k] !== 0);
+  const adjusted = request !== null && used.some((k) => request.clearance[k] !== 0);
   const fileName = request && `${part.filename(request.params)}${adjusted ? "-adjusted" : ""}.${format}`;
 
   const calibrationSet = useMemo(() => calibrationSetFrom(paramText), [paramText]);
   const listSet = useMemo(() => listSetFrom(list, fit.text), [list, fit.text]);
+  // A calibration step's check set: real parts made with the fit settings, as a parts list.
+  const checkSet = useMemo(() => (step.check ? listSetFrom([...step.check.items], fit.text) : null), [step, fit.text]);
+  const checkFileName =
+    checkSet?.items && step.check ? `${step.check.filename}${checkSet.adjusted ? "-adjusted" : ""}.${format}` : null;
   const listFileName =
     listSet.items && list.length > 0 ? `parts-list${listSet.adjusted ? "-adjusted" : ""}.${format}` : null;
 
@@ -417,6 +422,17 @@ export default function App() {
       );
   };
 
+  const downloadCheck = () => {
+    if (!checkSet) return;
+    const { items } = checkSet;
+    if (items && checkFileName)
+      void download(
+        checkSet,
+        () => jobs.always(() => engine.api().createSetBlob(items, format).then(recycled)),
+        checkFileName,
+      );
+  };
+
   const addCurrent = () => {
     if (!request) return;
     const next = addToList(list, part.id, request.params);
@@ -474,8 +490,8 @@ export default function App() {
       <header className="header">
         <h1>Building Block Parts Generator</h1>
         <p>
-          Generate beams (liftarms) and other pin-and-axle parts as STEP files with true curves, for resin printing, CNC
-          milling and CAD. Compatible with LEGO® Technic™ and similar building systems.
+          Generate beams (liftarms), pins, axles, bricks and plates as STEP files with true curves, for resin printing,
+          CNC milling and CAD. Compatible with LEGO® bricks, LEGO® Technic™ and similar building systems.
         </p>
       </header>
 
@@ -519,7 +535,7 @@ export default function App() {
 
           {usesClearance && (
             <FitBox
-              part={part}
+              keys={used}
               fit={fit}
               adjusted={clearanceState.adjustments.length > 0}
               summary={summary}
@@ -593,6 +609,7 @@ export default function App() {
           stale={request === null || buildFailed !== null}
           message={viewerMessage}
           spinner={showSpinner}
+          side={part.view ?? "above"}
         />
       </div>
 
@@ -620,6 +637,15 @@ export default function App() {
           guideFailed={guideFailed}
           onSave={saveResult}
           onCentre={(value) => setParam(part.id)("centre", String(value))}
+          check={
+            checkSet && {
+              onDownload: downloadCheck,
+              label: exporting ? "Preparing…" : "Download the check set",
+              fileName: checkFileName,
+              problem: checkSet.problem ?? downloadFailed(checkSet),
+              disabled: !checkSet.items || !engineReady || exporting,
+            }
+          }
         />
       )}
 

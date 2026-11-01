@@ -732,11 +732,31 @@ a {
   flex: 1 1 24ch;
 }
 
+/* Groups of steps in four columns; each group spans one column per step (--steps),
+   and its steps fill them with the same gap, so steps line up across groups. */
+.step-groups {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px 8px;
+  margin: 24px 0 0;
+}
+.step-group {
+  grid-column: span var(--steps);
+  min-width: 0;
+}
+.step-group-title {
+  margin: 0 0 6px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
 .steps {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(var(--steps), minmax(0, 1fr));
   gap: 8px;
-  margin: 24px 0 0;
+  margin: 0;
   padding: 0;
   list-style: none;
 }
@@ -804,6 +824,24 @@ a {
 .panel-title {
   margin: 0 0 6px;
   font-size: 1.1rem;
+}
+
+/* A step's check set, under its Result. */
+.check-set {
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+.check-set h3 {
+  margin: 0 0 6px;
+  font-size: 1rem;
+}
+.check-set .button {
+  width: auto;
+  padding: 0 16px;
+}
+.check-set .button + .note {
+  margin-top: 6px;
 }
 
 .step-detail {
@@ -1111,8 +1149,12 @@ a {
     width: 100%;
     padding: 0 8px;
   }
+  .step-groups,
   .steps {
     grid-template-columns: 1fr;
+  }
+  .step-group {
+    grid-column: auto;
   }
   .fit-fields {
     grid-template-columns: 1fr;

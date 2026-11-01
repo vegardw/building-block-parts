@@ -2,7 +2,7 @@
 // A collar in the middle and a side on each end: a pin (with or without
 // friction ribs), an axle, or a stud. That covers the common pins: 2L and 3L
 // pins, half pins and axle pins. See docs/dimensions.md.
-import { SPEC, AXLE, PIN, EPS } from "../spec";
+import { SPEC, AXLE, PIN, EPS, type ClearanceKey } from "../spec";
 import type { PartDefinition } from "./types";
 
 export type PinParams = { sideA: number; sideB: number; ends: number };
@@ -76,10 +76,24 @@ export function pinLength({ sideA, sideB }: PinParams): number {
   return length(pinSide(sideA)) + length(pinSide(sideB));
 }
 
+// Every setting a pin can use; a given pin uses the axle size only with an axle side
+// and the stud diameter only with a stud.
+const PIN_SETTINGS: readonly ClearanceKey[] = ["pin", "collar", "axle", "stud"];
+
 const pin: PartDefinition<PinParams> = {
   id: "pin",
   name: "Pin",
-  clearance: ["pin", "collar", "axle"],
+  clearance: PIN_SETTINGS,
+
+  uses({ sideA, sideB }) {
+    const sides = [sideA, sideB].map((v) => PIN_SIDES.find((s) => s.value === v));
+    if (sides.some((s) => s === undefined)) return PIN_SETTINGS; // invalid: the form says why
+    return PIN_SETTINGS.filter(
+      (key) =>
+        (key !== "axle" || sides.some((s) => s?.kind === "axle")) &&
+        (key !== "stud" || sides.some((s) => s?.kind === "stud")),
+    );
+  },
   presets: { label: "Common pins", options: PIN_PRESETS },
   params: [
     {
@@ -121,7 +135,7 @@ const pin: PartDefinition<PinParams> = {
   },
 
   // Tiles shown with the fit settings: the sizes they result in.
-  summary({ sideA, sideB, ends }, { pin: size, collar, axle }) {
+  summary({ sideA, sideB, ends }, { pin: size, collar, axle, stud }) {
     const sides = [pinSide(sideA), pinSide(sideB)];
     const tiles = [
       { label: "Shaft ⌀", value: `${(PIN.shaftD + size).toFixed(2)} mm` },
@@ -130,6 +144,8 @@ const pin: PartDefinition<PinParams> = {
     ];
     if (sides.some((s) => s.kind === "axle"))
       tiles.push({ label: "Cross ⌀", value: `${(AXLE.crossD + axle).toFixed(2)} mm` });
+    if (sides.some((s) => s.kind === "stud"))
+      tiles.push({ label: "Stud ⌀", value: `${(PIN.shaftD + stud).toFixed(2)} mm` });
     return tiles;
   },
 

@@ -1,7 +1,7 @@
 // Axle: part definition (pure data and checks; the CAD code is in axle.build.ts).
 // Length in studs, half steps allowed (official axles include 3.5, 4.5 and 5.5).
 // Each end can be plain, notched or carry a stop; see docs/dimensions.md.
-import { SPEC, AXLE, MAX_STUDS, EPS } from "../spec";
+import { SPEC, AXLE, MAX_STUDS, EPS, type ClearanceKey } from "../spec";
 import type { PartDefinition } from "./types";
 
 export type AxleParams = { length: number; endA: number; endB: number };
@@ -47,10 +47,24 @@ const endHint =
   `Stop: a ${SPEC.collarD} mm flange that sits in a counterbore. Stop one stud in: the flange 8 mm from the end, ` +
   "with a round section that won't enter an axle hole. Notched: grooves for extra grip.";
 
+// Every setting an axle can use; a given axle uses the collar diameter only with a
+// stop and the stud diameter only with a stud.
+const AXLE_SETTINGS: readonly ClearanceKey[] = ["axle", "collar", "stud"]; // outside sizes, so not the hole clearance
+
 const axle: PartDefinition<AxleParams> = {
   id: "axle",
   name: "Axle",
-  clearance: ["axle", "collar"], // outside sizes, so not the hole clearance
+  clearance: AXLE_SETTINGS,
+
+  uses({ endA, endB }) {
+    const ends = [endA, endB].map((v) => AXLE_ENDS.find((e) => e.value === v));
+    if (ends.some((e) => e === undefined)) return AXLE_SETTINGS; // invalid: the form says why
+    return AXLE_SETTINGS.filter(
+      (key) =>
+        (key !== "collar" || ends.some((e) => e !== undefined && stopDiameter(e, 0) !== null)) &&
+        (key !== "stud" || ends.some((e) => e?.id === "stud")),
+    );
+  },
   params: [
     {
       key: "length",
@@ -91,17 +105,19 @@ const axle: PartDefinition<AxleParams> = {
   },
 
   // Tiles shown with the fit settings: the sizes they result in.
-  summary({ endA, endB }, { axle: size, collar }) {
+  summary({ endA, endB }, { axle: size, collar, stud }) {
     // One tile per kind of stop present (tiles are keyed by label).
     const stops = new Map<string, number>();
     for (const end of [endA, endB].map(axleEnd)) {
       const d = stopDiameter(end, collar);
       if (d !== null) stops.set(end.id === "stop-in" ? "Inner stop ⌀" : "Stop ⌀", d);
     }
+    const studs = [endA, endB].some((e) => axleEnd(e).id === "stud");
     return [
       { label: "Cross ⌀", value: `${(AXLE.crossD + size).toFixed(2)} mm` },
       { label: "Arm width", value: `${(AXLE.armWidth + size).toFixed(2)} mm` },
       ...[...stops].map(([label, d]) => ({ label, value: `${d.toFixed(2)} mm` })),
+      ...(studs ? [{ label: "Stud ⌀", value: `${(AXLE.studD + stud).toFixed(2)} mm` }] : []),
     ];
   },
 

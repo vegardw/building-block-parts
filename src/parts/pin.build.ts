@@ -36,7 +36,8 @@ function pinHalf(side: PinSide, other: PinSide, snap: boolean, c: Clearance): Sh
 
   if (side.kind === "stud") {
     // An open stud on the back of the collar, as on a half pin; the bore runs through it.
-    return segment((PIN.shaftD + c.pin) / 2, -OVERLAP, PIN.studHeight).cut(
+    // It sits in a brick's underside, so it takes the stud diameter, like a brick's studs.
+    return segment((PIN.shaftD + c.stud) / 2, -OVERLAP, PIN.studHeight).cut(
       segment(boreR, -OVERLAP - 1, PIN.studHeight + 1),
     );
   }

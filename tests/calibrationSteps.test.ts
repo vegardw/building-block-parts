@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 
 import {
   CALIBRATION_STEPS,
+  STEP_GROUPS,
   getStep,
   requireStep,
   stepFor,
@@ -32,6 +33,32 @@ describe("calibration steps", () => {
     for (const f of CLEARANCE_FIELDS) expect(stepFor(f.key), f.key).toBeDefined();
     expect(stepFor("width")!.id).toBe("size");
     expect(stepFor("height")!.id).toBe("size");
+  });
+
+  // The list numbers the steps straight through, so they must come group by group.
+  it("lists the steps group by group, every group with a step", () => {
+    const order = STEP_GROUPS.map((g) => g.id);
+    const groups = CALIBRATION_STEPS.map((s) => order.indexOf(s.group));
+    expect(groups).toEqual([...groups].sort((a, b) => a - b));
+    expect(new Set(groups).size).toBe(STEP_GROUPS.length);
+    expect(CALIBRATION_STEPS.filter((s) => s.group === "bricks").map((s) => s.id)).toEqual(["stud", "underside"]);
+  });
+
+  // Real parts made with the fit settings: bricks that hold studs in the ways the
+  // underside bar's sections don't (walls alone, walls and a bar), and a 2 × 2 that does.
+  it("offers a check set of valid bricks under the underside step only", () => {
+    const withCheck = CALIBRATION_STEPS.filter((s) => s.check).map((s) => s.id);
+    expect(withCheck).toEqual(["underside"]);
+    const check = getStep("underside")!.check!;
+    expect(check.items.map((i) => [i.partId, i.params.width, i.params.length, i.count])).toEqual([
+      ["brick", 1, 1, 1],
+      ["brick", 1, 2, 1],
+      ["brick", 2, 2, 1],
+      ["brick-with-holes", undefined, 2, 1],
+    ]);
+    for (const item of check.items)
+      expect(validatePart(requirePart(item.partId), item.params, NO_CLEARANCE)).toBeNull();
+    expect(check.filename).toBe("brick-check-set");
   });
 
   it("finds every step by its id, and names an unknown one", () => {
@@ -86,7 +113,7 @@ describe("fromMeasured", () => {
 
   it("rejects a measurement beyond the setting's limit", () => {
     expect(fromMeasured("height", 4)).toEqual({
-      error: "4 mm is 4.00 mm from the nominal 8 mm; the beam height setting allows ±1 mm. Check the measurement.",
+      error: "4 mm is 4.00 mm from the nominal 8 mm; the part height setting allows ±1 mm. Check the measurement.",
     });
   });
 });

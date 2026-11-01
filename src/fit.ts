@@ -1,4 +1,4 @@
-// The fit settings (pure, no CAD import): the six clearance values as typed, and
+// The fit settings (pure, no CAD import): the clearance values as typed, and
 // where each came from. They belong to the machine, not to a part: every part
 // reads the ones it uses, the Calibrate section writes them, and they can be
 // saved to a file and loaded in another browser.
@@ -95,7 +95,7 @@ export function fitToFile(fit: Fit, date: string): { text: string } | { error: s
   return { text: JSON.stringify(file, null, 2) + "\n" };
 }
 
-// A loaded file replaces all six values: one missing from the file (e.g. saved
+// A loaded file replaces all the values: one missing from the file (e.g. saved
 // before that setting existed) becomes 0. Nothing is changed if any value is wrong.
 export function fitFromFile(text: string): { fit: Fit } | { error: string } {
   let data: unknown;

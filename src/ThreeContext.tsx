@@ -3,7 +3,7 @@ import { Canvas, useFrame, useThree, type RootState } from "@react-three/fiber";
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 
-import { requiredDistance, shouldRefit, VIEW_FROM, LIGHT_FROM, type Bounds } from "./cameraFit";
+import { requiredDistance, shouldRefit, viewFrom, lightFrom, VIEW_FROM, type Bounds, type ViewSide } from "./cameraFit";
 
 // threejs tends to use Y as the height, while replicad uses Z.
 THREE.Object3D.DEFAULT_UP.set(0, 0, 1);
@@ -16,8 +16,8 @@ THREE.Object3D.DEFAULT_UP.set(0, 0, 1);
 // resized (window resize, phone rotation, layout change); the viewing direction is
 // kept. See cameraFit.ts for when the user's own zoom and pan are left alone.
 // `reset` changing (the Reset view button) fits the model from the starting view
-// direction, whatever the user did.
-function CameraControls({ bounds, reset }: { bounds: Bounds | null; reset: number }) {
+// direction, whatever the user did; so does `side` changing (a part seen from below).
+function CameraControls({ bounds, reset, side }: { bounds: Bounds | null; reset: number; side: ViewSide }) {
   const camera = useThree((s) => s.camera) as THREE.PerspectiveCamera;
   const domElement = useThree((s) => s.gl.domElement);
   const invalidate = useThree((s) => s.invalidate);
@@ -25,6 +25,7 @@ function CameraControls({ bounds, reset }: { bounds: Bounds | null; reset: numbe
   const height = useThree((s) => s.size.height);
   const fitted = useRef<{ radius: number; distance: number; center: THREE.Vector3 } | null>(null); // last automatic fit
   const lastReset = useRef(reset);
+  const lastSide = useRef<ViewSide>("above"); // the camera starts above (see the Canvas)
 
   const controls = useMemo(() => {
     const c = new OrbitControls(camera);
@@ -50,8 +51,9 @@ function CameraControls({ bounds, reset }: { bounds: Bounds | null; reset: numbe
     if (!bounds || !(bounds.radius > 0) || !(width > 0) || !(height > 0)) return;
 
     const last = fitted.current;
-    const resetting = reset !== lastReset.current;
+    const resetting = reset !== lastReset.current || side !== lastSide.current;
     lastReset.current = reset;
+    lastSide.current = side;
     const refit =
       resetting ||
       shouldRefit({
@@ -64,7 +66,7 @@ function CameraControls({ bounds, reset }: { bounds: Bounds | null; reset: numbe
 
     const center = new THREE.Vector3(...bounds.center);
     const direction = new THREE.Vector3().subVectors(camera.position, controls.target);
-    if (resetting || direction.lengthSq() === 0) direction.set(...VIEW_FROM);
+    if (resetting || direction.lengthSq() === 0) direction.set(...viewFrom(side));
     direction.normalize();
     const distance = requiredDistance(camera.fov, bounds.radius, width / height);
 
@@ -73,7 +75,7 @@ function CameraControls({ bounds, reset }: { bounds: Bounds | null; reset: numbe
     controls.update();
     fitted.current = { radius: bounds.radius, distance, center };
     invalidate();
-  }, [bounds, camera, controls, invalidate, width, height, reset]);
+  }, [bounds, camera, controls, invalidate, width, height, reset, side]);
 
   return null;
 }
@@ -83,9 +85,17 @@ interface ThreeContextProps extends Omit<ComponentProps<typeof Canvas>, "childre
   onContextLost?: () => void; // the browser dropped the WebGL context (e.g. under memory pressure)
   bounds: Bounds | null; // bounding sphere of the model, used to fit the camera
   reset?: number; // change it to return to the starting view
+  side?: ViewSide; // where the starting view looks from
 }
 
-export default function ThreeContext({ children, bounds, reset = 0, onContextLost, ...props }: ThreeContextProps) {
+export default function ThreeContext({
+  children,
+  bounds,
+  reset = 0,
+  side = "above",
+  onContextLost,
+  ...props
+}: ThreeContextProps) {
   const dpr = Math.min(window.devicePixelRatio, 2);
 
   return (
@@ -107,9 +117,9 @@ export default function ThreeContext({ children, bounds, reset = 0, onContextLos
           });
         }}
       >
-        <CameraControls bounds={bounds} reset={reset} />
+        <CameraControls bounds={bounds} reset={reset} side={side} />
         <ambientLight intensity={4} />
-        <pointLight position={[...LIGHT_FROM]} />
+        <pointLight position={[...lightFrom(side)]} />
         {children}
       </Canvas>
     </Suspense>

@@ -7,6 +7,7 @@ import {
   parseParams,
   validatePart,
   paramProblem,
+  settingsUsed,
 } from "../src/parts/index";
 import { BUILDERS } from "../src/parts/builders";
 import { NO_CLEARANCE, CLEARANCE_FIELDS, type Clearance } from "../src/spec";
@@ -28,6 +29,24 @@ describe("part registry", () => {
     const part = requirePart(id);
     const params = parseParams(part, defaultText(part));
     expect(validatePart(part, params, NO_CLEARANCE)).toBeNull();
+  });
+
+  // Every choice of every part (one choice at a time from the defaults): the settings
+  // it uses are always some of those it lists, in their order.
+  it.each(PARTS.map((p) => p.id))("%s: the settings used are among its clearance list", (id) => {
+    const part = requirePart(id);
+    const defaults = parseParams(part, defaultText(part));
+    const variants = [defaults];
+    for (const def of part.params) {
+      if (def.type === "choice") for (const o of def.options) variants.push({ ...defaults, [def.key]: o.value });
+    }
+    for (const params of variants) {
+      const used = settingsUsed(part, params);
+      expect(
+        part.clearance.filter((k) => used.includes(k)),
+        JSON.stringify(params),
+      ).toEqual([...used]);
+    }
   });
 });
 
@@ -95,8 +114,10 @@ describe("calibration parts", () => {
       "calibration",
       "collar-calibration",
       "pin-calibration",
+      "stud-calibration",
+      "underside-calibration",
     ]);
-    expect(REGULAR_PARTS.map((p) => p.id)).toEqual(["beam", "axle", "pin"]);
+    expect(REGULAR_PARTS.map((p) => p.id)).toEqual(["beam", "axle", "pin", "brick", "brick-with-holes", "plate"]);
   });
 
   it.each(calibration.map((p) => p.id))("%s finds a fit setting and uses none", (id) => {

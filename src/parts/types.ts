@@ -92,13 +92,20 @@ export interface CalibrationSpec {
 export interface PartDefinition<P extends ParamValues = ParamValues> {
   id: string;
   name: string;
-  // The global clearance fields this part uses (shown as its fit settings); [] = none.
+  // The global clearance fields this part can use (shown as its fit settings); [] = none.
   clearance: readonly ClearanceKey[];
+  // Optional: the ones these parameters use, when some depend on them (a pin's
+  // axle or stud side, an axle's stops); a subset of `clearance`. The fit box, the
+  // file name's "-adjusted", rebuilds and validation count only these (settingsUsed).
+  uses?(params: P): readonly ClearanceKey[];
   // Only on calibration parts, which are listed under Calibrate instead of Parts.
   calibration?: CalibrationSpec;
   params: ParamDef[];
   // Quick picks above the form, under a heading such as "Common pins".
   presets?: { label: string; options: Preset[] };
+  // Where the preview first looks from: "below" for a part whose features face
+  // down as it is printed (the underside calibration bar); above otherwise.
+  view?: "below";
   // Cross-field checks, run after the generic range checks.
   validate?(params: P, clearance: Clearance): string | null;
   // Tiles shown with the fit settings: the sizes they result in.

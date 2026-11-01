@@ -1,7 +1,7 @@
 import "./openCascade";
 import { describe, it, expect } from "vitest";
 
-import { requirePart, validatePart, paramProblem } from "../src/parts/index";
+import { requirePart, validatePart, paramProblem, settingsUsed } from "../src/parts/index";
 import { buildPart } from "../src/parts/builders";
 import { AXLE_ENDS, type AxleParams } from "../src/parts/axle";
 import { NO_CLEARANCE } from "../src/spec";
@@ -31,8 +31,8 @@ function measureAxle(g: StepGeometry) {
   };
 }
 
-async function exportAxle(p: AxleParams, size = 0, collar = 0) {
-  const clearance = { ...NO_CLEARANCE, axle: size, collar };
+async function exportAxle(p: AxleParams, size = 0, collar = 0, stud = 0) {
+  const clearance = { ...NO_CLEARANCE, axle: size, collar, stud };
   const step = await buildPart({ partId: "axle", params: p, clearance }).blobSTEP().text();
   return { step, stats: analyseStep(step), geometry: stepGeometry(step) };
 }
@@ -86,10 +86,27 @@ describe("axle parameters", () => {
     expect(part.filename(params({ endA: STUD, endB: NOTCHED }))).toBe("axle-4-stud-notched");
   });
 
-  it("uses the global axle size and collar diameter, each ±0.5 mm", () => {
-    expect(part.clearance).toEqual(["axle", "collar"]);
+  // Only those that change it: the collar diameter with a stop, the stud diameter with a stud.
+  it("uses the collar diameter only with a stop and the stud diameter only with a stud", () => {
+    expect(settingsUsed(part, params({}))).toEqual(["axle"]);
+    expect(settingsUsed(part, params({ endA: NOTCHED, endB: NOTCHED }))).toEqual(["axle"]);
+    expect(settingsUsed(part, params({ endA: STOP }))).toEqual(["axle", "collar"]);
+    expect(settingsUsed(part, params({ endB: STOP_IN }))).toEqual(["axle", "collar"]);
+    expect(settingsUsed(part, params({ endA: STUD }))).toEqual(["axle", "collar", "stud"]);
+    expect(settingsUsed(part, params({ endA: 99 }))).toEqual(part.clearance);
+    expect(validatePart(part, params({}), { ...NO_CLEARANCE, collar: 5, stud: 5 })).toBeNull();
+  });
+
+  it("uses the global axle size, collar diameter and stud diameter, each ±0.5 mm", () => {
+    expect(part.clearance).toEqual(["axle", "collar", "stud"]);
+    expect(validatePart(part, params({ endA: STUD }), { ...NO_CLEARANCE, stud: 0.5 })).toBeNull();
+    expect(validatePart(part, params({ endA: STUD }), { ...NO_CLEARANCE, stud: 0.51 })).toMatch(
+      /Stud diameter clearance/,
+    );
     expect(validatePart(part, params({ endA: STOP }), { ...NO_CLEARANCE, collar: -0.5 })).toBeNull();
-    expect(validatePart(part, params({}), { ...NO_CLEARANCE, collar: 0.51 })).toMatch(/Collar diameter clearance/);
+    expect(validatePart(part, params({ endA: STOP }), { ...NO_CLEARANCE, collar: 0.51 })).toMatch(
+      /Collar diameter clearance/,
+    );
     expect(validatePart(part, params({}), { ...NO_CLEARANCE, axle: 0.5 })).toBeNull();
     expect(validatePart(part, params({}), { ...NO_CLEARANCE, axle: -0.51 })).toMatch(/Axle size clearance/);
     // The beam clearance fields don't apply to axles.
@@ -130,6 +147,12 @@ describe("axle dimensions in the exported STEP file", () => {
     // 3 studs = 24 mm: plain end at -11.8; flange 11.2..12; stud to 13.6, bore floor at 12.
     expect(m.xPlanes).toEqual([-11.8, 11.2, 12, 13.6]);
     expect(m.radii).toEqual([1.6, 2.4, 3]);
+  });
+
+  // The stud sits in a brick's underside, so it takes the stud diameter, not the axle size.
+  it("stud diameter changes the stud, axle size the cross", async () => {
+    const m = measureAxle((await exportAxle(params({ length: 3, endB: STUD }), -0.2, 0, 0.2)).geometry);
+    expect(m.radii).toEqual([1.6, 2.3, 2.5, 3]); // bore 1.6, cross tips 2.3, stud 2.5, flange 3
   });
 
   it("stop one stud in: Ø5.75 flange 7.2 to 8 mm from the end, round section to 11.2 mm", async () => {

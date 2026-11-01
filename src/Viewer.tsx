@@ -1,7 +1,7 @@
 import { Suspense, lazy, useEffect, useMemo, useState } from "react";
 
 import ErrorBoundary from "./ErrorBoundary";
-import { boundsOf } from "./cameraFit";
+import { boundsOf, type ViewSide } from "./cameraFit";
 import { webglAvailable } from "./webgl";
 import type { MeshData } from "./parts/types";
 
@@ -44,6 +44,7 @@ interface ViewerProps {
   stale: boolean; // the inputs are invalid: the shown model is the last valid one
   message: string; // shown while there is no model
   spinner: boolean;
+  side: ViewSide; // where the starting view looks from: below for a part whose features face down
 }
 
 // How to move the view, for people new to 3D views; touch screens get their own words.
@@ -57,7 +58,7 @@ const CONTROLS = touch
 const sizeText = (size: [number, number, number]) => `${size.map((d) => d.toFixed(1)).join(" × ")} mm`;
 
 // The 3D preview, or a message when there is no model or no WebGL.
-export default function Viewer({ mesh, busy, stale, message, spinner }: ViewerProps) {
+export default function Viewer({ mesh, busy, stale, message, spinner, side }: ViewerProps) {
   const [previewSupported] = useState(() => webglAvailable());
   const [previewLost, setPreviewLost] = useState(false); // the browser dropped the WebGL context
   const [previewKey, setPreviewKey] = useState(0); // changing it remounts the 3D view
@@ -112,7 +113,13 @@ export default function Viewer({ mesh, busy, stale, message, spinner }: ViewerPr
               }
             >
               <Suspense fallback={<div className="viewer-message">Loading the 3D view…</div>}>
-                <Scene mesh={mesh} bounds={bounds} reset={viewReset} onContextLost={() => setPreviewLost(true)} />
+                <Scene
+                  mesh={mesh}
+                  bounds={bounds}
+                  reset={viewReset}
+                  side={side}
+                  onContextLost={() => setPreviewLost(true)}
+                />
               </Suspense>
             </ErrorBoundary>
           )}

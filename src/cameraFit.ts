@@ -13,6 +13,14 @@ export const PAN_TOLERANCE = 0.01; // target moved >1% of the model radius count
 export const VIEW_FROM: readonly [number, number, number] = [-20, -40, 50];
 export const LIGHT_FROM: readonly [number, number, number] = [-100, -100, 100];
 
+// A part whose features face down as it is printed (PartDefinition.view) is first
+// seen from below instead: the same view mirrored in Z, +X still on the right,
+// and lit from below so those faces aren't dark.
+export type ViewSide = "above" | "below";
+const mirrored = ([x, y, z]: readonly [number, number, number]) => [x, y, -z] as const;
+export const viewFrom = (side: ViewSide) => (side === "below" ? mirrored(VIEW_FROM) : VIEW_FROM);
+export const lightFrom = (side: ViewSide) => (side === "below" ? mirrored(LIGHT_FROM) : LIGHT_FROM);
+
 // Distance at which a sphere of `radius` fits the narrower of the vertical and
 // horizontal fields of view, with MARGIN around it.
 export function requiredDistance(fovDegrees: number, radius: number, aspect: number): number {
