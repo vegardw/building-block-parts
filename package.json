@@ -1,0 +1,86 @@
+{
+  "name": "building-block-parts",
+  "version": "0.1.0",
+  "description": "Browser app for designing parts for building-block construction systems and downloading them as CAD files with true curves, ready for 3D printing or CNC machining. Calibrate the fit to your own machine and preview each part in 3D. Written in TypeScript with replicad, and runs entirely client-side.",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "workspaces": [
+    "tools/typescript-eslint"
+  ],
+  "scripts": {
+    "start": "vite",
+    "build": "npm run typecheck && vite build",
+    "serve": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:browser": "npm run build && playwright test",
+    "notices": "node scripts/generate-notices.mjs",
+    "screenshots": "npm run build && node scripts/screenshots.mjs",
+    "prestart": "npm run notices",
+    "prebuild": "npm run notices",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "check": "npm run typecheck && npm run lint && npm run format:check && npm test"
+  },
+  "dependencies": {
+    "@react-three/fiber": "^9.7.0",
+    "comlink": "^4.4.2",
+    "file-saver": "^2.0.5",
+    "marked": "^18.1.2",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "replicad": "^1.2.0",
+    "replicad-opencascadejs": "^1.1.0",
+    "three": "^0.185.1"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.64.1",
+    "@types/file-saver": "^2.0.7",
+    "@types/node": "^26.6.6",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@types/three": "^0.186.0",
+    "@vitejs/plugin-react": "^6.0.5",
+    "eslint": "^10.14.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "globals": "^17.13.0",
+    "prettier": "^3.9.10",
+    "typescript": "^7.0.2",
+    "vite": "^8.2.1",
+    "vitest": "^5.0.5"
+  },
+  "allowScripts": {
+    "fsevents@2.3.3": true
+  },
+  "engines": {
+    "node": "^22.13.0 || ^24.0.0 || >=26.0.0"
+  },
+  "author": "Vegard Wærp",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vegardw/building-block-parts.git"
+  },
+  "bugs": {
+    "url": "https://github.com/vegardw/building-block-parts/issues"
+  },
+  "keywords": [
+    "step",
+    "cad",
+    "3d-printing",
+    "cnc",
+    "parametric",
+    "liftarm",
+    "building-blocks",
+    "replicad"
+  ],
+  "overrides": {
+    "ts-api-utils": {
+      "typescript": "~6.0.3"
+    }
+  }
+}

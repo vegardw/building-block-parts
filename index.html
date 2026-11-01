@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <title>Building Block Parts Generator – STEP files for 3D printing and CNC</title>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Create custom beams (liftarms) and other parts compatible with LEGO® Technic™ and similar systems. Calibrate the fit for your printer or CNC machine, set the size, then download a STEP file."
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Building Block Parts Generator" />
+    <meta
+      property="og:description"
+      content="Create custom beams (liftarms) and other parts compatible with LEGO® Technic™ and similar systems. Calibrate the fit for your printer or CNC machine, set the size, then download a STEP file."
+    />
+    <!-- %SITE_URL% is set at build time (vite.config.ts); link previews need an absolute address. -->
+    <meta property="og:image" content="%SITE_URL%/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="The generator with a beam (liftarm) in its 3D preview" />
+    <meta name="twitter:card" content="summary_large_image" />
+  </head>
+  <body>
+    <div id="root">
+      <!-- Shown until the app loads, and readable by search engines. React replaces it. Styled
+           in styles.css, not inline: the Content-Security-Policy (public/_headers) blocks inline styles. -->
+      <main class="prerender">
+        <h1>Building Block Parts Generator</h1>
+        <p>
+          Generate beams (liftarms) and other pin-and-axle parts compatible with LEGO® Technic™ and similar building
+          systems. Calibrate the fit for your 3D printer or CNC machine, choose the size, preview the part in 3D and
+          download a STEP file with true curves, or an STL mesh.
+        </p>
+        <p>Loading…</p>
+      </main>
+    </div>
+    <noscript>This app needs JavaScript to build 3D parts in your browser.</noscript>
+    <script type="module" src="/src/index.tsx"></script>
+  </body>
+</html>

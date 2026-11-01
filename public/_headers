@@ -1,0 +1,26 @@
+# Response headers for the static site, read by Cloudflare Pages and Netlify (same format).
+# Other hosts: set the same headers there. `npm run serve` (vite preview) applies this file
+# too, so the browser smoke test (npm run test:browser) runs under these headers.
+# Each header is set by one rule only: both hosts join a header that two matching rules set.
+
+/*
+# One policy for the page and the CAD worker (browsers differ on which one a worker uses).
+# 'unsafe-eval': the engine's bindings (Emscripten embind) build functions with `new Function`.
+# 'wasm-unsafe-eval': compiling the engine's WebAssembly (older Chrome counts it as 'unsafe-eval').
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-eval' 'wasm-unsafe-eval'; worker-src 'self'; connect-src 'self'; style-src 'self'; img-src 'self'; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'; frame-ancestors 'none'
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+  Cross-Origin-Opener-Policy: same-origin
+
+# Built files have a content hash in their name, so they never change: cache them for a year.
+# This is what makes a second visit quick (the engine is about 7 MB compressed).
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# The page itself names the current files, so it is always checked for a newer version.
+/
+  Cache-Control: no-cache
+/index.html
+  Cache-Control: no-cache

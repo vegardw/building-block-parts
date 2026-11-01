@@ -1,0 +1,10 @@
+build
+.vite
+public/THIRD_PARTY_NOTICES.txt
+package-lock.json
+notes
+# Hand-wrapped prose; Prettier would only pad the tables to very long lines.
+*.md
+
+test-results
+playwright-report

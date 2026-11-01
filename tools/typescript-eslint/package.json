@@ -1,0 +1,13 @@
+{
+  "name": "typescript-eslint-ts6",
+  "version": "0.0.0",
+  "description": "typescript-eslint with the TypeScript 6 it needs; the project type-checks with TypeScript 7",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "exports": "./index.js",
+  "dependencies": {
+    "typescript": "~6.0.3",
+    "typescript-eslint": "^8.72.1"
+  }
+}
