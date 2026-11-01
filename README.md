@@ -159,8 +159,8 @@ files, so check your host's limits, especially when upgrading
 **Headers and caching.** `public/_headers` (copied into `build/`) sets the
 security headers, including a Content-Security-Policy, and the cache rules:
 the hashed files in `assets/` for a year, the page always revalidated.
-Cloudflare Pages and Netlify read it as is; on another host, set the same
-headers there. The policy needs `'unsafe-eval'` and `'wasm-unsafe-eval'`
+Cloudflare (Workers or Pages) and Netlify read it as is; on another host, set the
+same headers there. The policy needs `'unsafe-eval'` and `'wasm-unsafe-eval'`
 because the engine compiles WebAssembly and its bindings build functions at
 run time. `npm run serve` applies the file too, so you can try it locally.
 
@@ -173,6 +173,11 @@ another address, or without one, set `SITE_URL`:
 SITE_URL=https://example.org npm run build   # another address
 SITE_URL= npm run build                      # none: relative image address
 ```
+
+**Cloudflare Workers.** The site is hosted as a Worker with static assets and
+no Worker code: `wrangler.jsonc` points it at `build/`. Connected to the GitHub
+repository, Cloudflare runs `npm run build` and then `npx wrangler deploy` on
+every push to `main`.
 
 `npm run screenshots` remakes `docs/screenshot.png` and `public/og-image.png`
 from the current build, in Playwright's Chromium.

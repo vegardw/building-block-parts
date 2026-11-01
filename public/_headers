@@ -1,4 +1,4 @@
-# Response headers for the static site, read by Cloudflare Pages and Netlify (same format).
+# Response headers for the static site, read by Cloudflare (Workers, Pages) and Netlify (same format).
 # Other hosts: set the same headers there. `npm run serve` (vite preview) applies this file
 # too, so the browser smoke test (npm run test:browser) runs under these headers.
 # Each header is set by one rule only: both hosts join a header that two matching rules set.

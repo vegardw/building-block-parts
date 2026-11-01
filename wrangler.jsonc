@@ -1,0 +1,10 @@
+// Cloudflare Workers settings for the hosted site: the static files in build/ (npm run build), with no Worker code.
+// public/_headers, copied into build/, sets the response headers. The app routes with #hash addresses, so
+// every page is index.html and an unknown path is a plain 404.
+{
+  "name": "building-block-parts",
+  "compatibility_date": "2026-10-01",
+  "assets": {
+    "directory": "./build",
+  },
+}

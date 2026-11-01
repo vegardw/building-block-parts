@@ -741,6 +741,7 @@ The tests follow three principles:
 | `headers.test.ts` | The `_headers` reader (`scripts/headersFile.ts`), and `public/_headers`: each header set by one rule only, the security headers on every path, the Content-Security-Policy's sources, the cache rules, and an `index.html` without inline styles or scripts. |
 | `links.test.ts` | The footer's source address matches `repository` and `bugs` in `package.json`. |
 | `siteAddress.test.ts` | The site's address: `homepage` in `package.json`, overridden by `SITE_URL`. |
+| `hosting.test.ts` | `wrangler.jsonc` serves the folder Vite builds into, with no Worker code. |
 | `browserSupport.test.ts` | The browser check, and that its exception-handling module tests the legacy encoding the engine uses (in a Node child process with it switched off). |
 
 ### The browser smoke test
@@ -776,10 +777,11 @@ components on their own, and the many UI states that are checked by hand before 
   starting with the OpenCascade notice and ending with the full LGPL text from `scripts/LGPL-2.1.txt`. The file is
   generated, so it is not in git. The OpenCascade notice names this application's source, taken from `repository` in
   `package.json`; the footer links the same address (`src/links.ts`, checked against `package.json` by a test).
-- **Hosting.** The build is plain static files (see the README). The WebAssembly file is about 23 MB, and some hosts
-  limit the size of a single file (Cloudflare Pages, used for the maintainer's deployment, allows 25 MiB), so check
+- **Hosting.** The build is plain static files (see the README). The maintainer's site is a Cloudflare Worker with static
+  assets only (`wrangler.jsonc`: the `build/` folder, no Worker code), built and deployed by Cloudflare on every push. The WebAssembly file is about 23 MB, and some hosts
+  limit the size of a single file (Cloudflare, used for the maintainer's deployment, allows 25 MiB), so check
   the size when upgrading `replicad-opencascadejs`.
-- **Headers and cache rules.** `public/_headers`, in the format Cloudflare Pages and Netlify read, sets for every path a
+- **Headers and cache rules.** `public/_headers`, in the format Cloudflare (Workers and Pages) and Netlify read, sets for every path a
   Content-Security-Policy (only the site's own files; `'unsafe-eval'` for the engine's embind bindings, which build
   functions with `new Function`, and `'wasm-unsafe-eval'` for compiling it; no inline scripts or styles, which is why
   the placeholder in `index.html` is styled by the `prerender` class), `nosniff`, no framing, a referrer policy and a
@@ -791,7 +793,7 @@ components on their own, and the many UI states that are checked by hand before 
   card. Link previews need absolute addresses, so the build writes the site's address into `og:image` and adds `og:url`
   and a canonical link (`siteAddress` in `vite.config.ts`). The address is `homepage` in `package.json`, or `SITE_URL`
   when set (`scripts/siteAddress.ts`); `SITE_URL=` builds without one, and the image address stays relative. The
-  canonical link makes search engines prefer the site's own address over the host's (`*.pages.dev`).
+  canonical link makes search engines prefer the site's own address over the host's (`*.workers.dev`).
 - **Images.** `npm run screenshots` builds and remakes the README screenshot and the card from the running app, in
   Playwright's Chromium.
 - **CI.** `.github/workflows/ci.yml` runs `npm ci`, `npm run check` (type check, lint, format check, tests) and

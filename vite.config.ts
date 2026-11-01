@@ -24,7 +24,7 @@ const hostHeaders = (): Plugin => ({
 // Link previews (og:image, og:url) need absolute addresses: package.json's `homepage`, or SITE_URL
 // (scripts/siteAddress.ts). Without one the image address stays relative and there is no og:url or
 // canonical link. The canonical link makes search engines prefer this address over the host's own
-// (*.pages.dev on Cloudflare Pages).
+// (*.workers.dev on Cloudflare Workers).
 const pkg = JSON.parse(readFileSync(new URL("package.json", import.meta.url), "utf8")) as { homepage?: string };
 const siteUrl = siteUrlFrom(process.env.SITE_URL, pkg.homepage);
 const siteAddress = (): Plugin => ({
