@@ -7,7 +7,16 @@
 # One policy for the page and the CAD worker (browsers differ on which one a worker uses).
 # 'unsafe-eval': the engine's bindings (Emscripten embind) build functions with `new Function`.
 # 'wasm-unsafe-eval': compiling the engine's WebAssembly (older Chrome counts it as 'unsafe-eval').
-  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-eval' 'wasm-unsafe-eval'; worker-src 'self'; connect-src 'self'; style-src 'self'; img-src 'self'; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'; frame-ancestors 'none'
+# The hosted site's Cloudflare zone injects two scripts into the page (custom domain only):
+# - Bot Fight Mode's JavaScript detections, an inline script that changes on every request (it
+#   carries the request ID), so no hash fits. Cloudflare copies the nonce from this header onto
+#   the scripts it injects. The nonce is fixed (static files), so it guards no more than
+#   'unsafe-inline' would against HTML injection, which the app has no way in for (React
+#   escapes everything, no server-side HTML); unlike 'unsafe-inline' it still blocks inline
+#   event handlers and javascript: links. The app's own code never uses it.
+# - Web Analytics' beacon, from static.cloudflareinsights.com; it reports to the site's own
+#   /cdn-cgi/rum, which connect-src 'self' allows.
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-eval' 'wasm-unsafe-eval' 'nonce-OljTtSDsr63UHtJe5X0kzNIK' https://static.cloudflareinsights.com; worker-src 'self'; connect-src 'self'; style-src 'self'; img-src 'self'; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'; frame-ancestors 'none'
   X-Content-Type-Options: nosniff
   X-Frame-Options: DENY
   Referrer-Policy: strict-origin-when-cross-origin

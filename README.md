@@ -67,8 +67,8 @@ cylinders with circular edges, not polygons made of line segments.
   - Beam width and height: enter what you measure on a test beam; the app works out
     the settings
 - The selected part, the calibration step, all parameters, the file type, the parts list
-  and the fit settings are remembered in the browser (local storage only; nothing is sent
-  anywhere)
+  and the fit settings are remembered in the browser (local storage only; they are never
+  sent anywhere)
 - A calibration guide, in [docs/calibration.md](docs/calibration.md) and inside the app:
   each step shows its section, and the whole guide opens from the Calibrate section
   (or the page address ending in `#guide`)
@@ -162,7 +162,11 @@ the hashed files in `assets/` for a year, the page always revalidated.
 Cloudflare (Workers or Pages) and Netlify read it as is; on another host, set the
 same headers there. The policy needs `'unsafe-eval'` and `'wasm-unsafe-eval'`
 because the engine compiles WebAssembly and its bindings build functions at
-run time. `npm run serve` applies the file too, so you can try it locally.
+run time. It also allows the two scripts Cloudflare adds to the hosted site:
+Web Analytics (cookieless visitor statistics) and Bot Fight Mode's bot
+detection, an inline script allowed by a fixed nonce, since it changes on every
+request; `public/_headers` explains why. On another host, drop both.
+`npm run serve` applies the file too, so you can try it locally.
 
 **Link previews.** The build writes the site's address (`homepage` in
 `package.json`) into `og:image` (the card in `public/og-image.png`), `og:url`

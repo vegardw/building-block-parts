@@ -783,8 +783,12 @@ components on their own, and the many UI states that are checked by hand before 
   the size when upgrading `replicad-opencascadejs`.
 - **Headers and cache rules.** `public/_headers`, in the format Cloudflare (Workers and Pages) and Netlify read, sets for every path a
   Content-Security-Policy (only the site's own files; `'unsafe-eval'` for the engine's embind bindings, which build
-  functions with `new Function`, and `'wasm-unsafe-eval'` for compiling it; no inline scripts or styles, which is why
-  the placeholder in `index.html` is styled by the `prerender` class), `nosniff`, no framing, a referrer policy and a
+  functions with `new Function`, and `'wasm-unsafe-eval'` for compiling it; no inline scripts or styles of its own, which is why
+  the placeholder in `index.html` is styled by the `prerender` class; and the two scripts the hosted site's Cloudflare zone
+  injects: the Web Analytics beacon from `static.cloudflareinsights.com`, and Bot Fight Mode's inline JavaScript
+  detections script, which carries the request ID, so no hash fits: Cloudflare copies the policy's nonce onto it. The
+  nonce is fixed, so it guards no more than `'unsafe-inline'` against HTML injection, which the app has no way in for,
+  but it still blocks inline event handlers), `nosniff`, no framing, a referrer policy and a
   permissions policy; `assets/*` cached for a year as immutable (the names carry a hash) and the page as `no-cache`.
   One policy covers the page and the worker, because browsers differ on whether a worker takes the page's policy or
   its own. Both hosts join a header that two matching rules set, so each header is set by one rule only

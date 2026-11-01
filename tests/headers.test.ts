@@ -72,9 +72,16 @@ describe("public/_headers", () => {
     }
   });
 
-  it("allows only the site's own files, and what the engine needs to run", () => {
+  it("allows only the site's own files, what the engine needs to run, and Cloudflare's two injected scripts", () => {
     expect(directive("default-src")).toEqual(["'self'"]);
-    expect(directive("script-src")).toEqual(["'self'", "'unsafe-eval'", "'wasm-unsafe-eval'"]);
+    expect(directive("script-src")).toEqual([
+      "'self'",
+      "'unsafe-eval'",
+      "'wasm-unsafe-eval'",
+      expect.stringMatching(/^'nonce-[A-Za-z0-9+/]{22,}={0,2}'$/), // bot detection's inline script
+      "https://static.cloudflareinsights.com", // the analytics beacon
+    ]);
+    expect(directive("connect-src")).toEqual(["'self'"]); // the beacon reports to the site's own /cdn-cgi/rum
     expect(directive("worker-src")).toEqual(["'self'"]);
     expect(directive("style-src")).toEqual(["'self'"]);
     expect(directive("object-src")).toEqual(["'none'"]);
@@ -99,6 +106,7 @@ describe("public/_headers", () => {
   it("matches a page without inline styles or scripts, which the policy would block", () => {
     const html = read("../index.html");
     expect(html).not.toMatch(/\sstyle=/);
+    expect(html).not.toContain("nonce"); // the policy's nonce is for Cloudflare's injected script only
     expect(html.match(/<script(?![^>]*\ssrc=)[^>]*>/g)).toBeNull();
   });
 });
