@@ -5,6 +5,7 @@ import reactPlugin from "@vitejs/plugin-react";
 
 // With its extension, unlike elsewhere: Vite's coming native config loader (Node) needs it.
 import { headersFor, parseHeadersFile } from "./scripts/headersFile.ts";
+import { siteUrlFrom } from "./scripts/siteAddress.ts";
 
 // `vite preview` (npm run serve) sends the headers in public/_headers, as the host
 // does, so the production headers (the CSP above all) are tried before deploying.
@@ -20,17 +21,24 @@ const hostHeaders = (): Plugin => ({
   },
 });
 
-// Link previews (og:image, og:url) need absolute addresses, so set SITE_URL when
-// building for a site: SITE_URL=https://example.org npm run build. Without it the
-// image address stays relative and there is no og:url.
-const siteUrl = (process.env.SITE_URL ?? "").replace(/\/+$/, "");
+// Link previews (og:image, og:url) need absolute addresses: package.json's `homepage`, or SITE_URL
+// (scripts/siteAddress.ts). Without one the image address stays relative and there is no og:url or
+// canonical link. The canonical link makes search engines prefer this address over the host's own
+// (*.pages.dev on Cloudflare Pages).
+const pkg = JSON.parse(readFileSync(new URL("package.json", import.meta.url), "utf8")) as { homepage?: string };
+const siteUrl = siteUrlFrom(process.env.SITE_URL, pkg.homepage);
 const siteAddress = (): Plugin => ({
   name: "site-address",
   transformIndexHtml: {
     order: "pre", // before Vite's own %NAME% replacement, which would warn about it
     handler: (html) => ({
       html: html.replaceAll("%SITE_URL%", siteUrl),
-      tags: siteUrl ? [{ tag: "meta", attrs: { property: "og:url", content: `${siteUrl}/` }, injectTo: "head" }] : [],
+      tags: siteUrl
+        ? [
+            { tag: "meta", attrs: { property: "og:url", content: `${siteUrl}/` }, injectTo: "head" },
+            { tag: "link", attrs: { rel: "canonical", href: `${siteUrl}/` }, injectTo: "head" },
+          ]
+        : [],
     }),
   },
 });

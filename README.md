@@ -5,6 +5,8 @@ downloading them as CAD files with true curves, ready for 3D printing or CNC
 machining. Calibrate the fit to your own machine and preview each part in 3D.
 Written in TypeScript with replicad, and runs entirely client-side.
 
+**Use it at <https://blockparts.vegardmakes.com>.**
+
 It generates parts compatible with LEGO® Technic™ and similar building systems:
 beams (liftarms) of full or half height, axles and pins, plus calibration parts
 that find the fit for your printer or CNC machine. Calibrate once, choose the
@@ -162,11 +164,14 @@ headers there. The policy needs `'unsafe-eval'` and `'wasm-unsafe-eval'`
 because the engine compiles WebAssembly and its bindings build functions at
 run time. `npm run serve` applies the file too, so you can try it locally.
 
-**Link previews.** Set the site's address when building, so `og:image` (the
-card in `public/og-image.png`) gets the absolute URL that link previews need:
+**Link previews.** The build writes the site's address (`homepage` in
+`package.json`) into `og:image` (the card in `public/og-image.png`), `og:url`
+and a canonical link, since link previews need absolute addresses. To build for
+another address, or without one, set `SITE_URL`:
 
 ```sh
-SITE_URL=https://example.org npm run build
+SITE_URL=https://example.org npm run build   # another address
+SITE_URL= npm run build                      # none: relative image address
 ```
 
 `npm run screenshots` remakes `docs/screenshot.png` and `public/og-image.png`
@@ -206,6 +211,7 @@ tests/              Vitest tests and the STEP analyser
 e2e/                browser smoke test (Playwright; playwright.config.ts)
 scripts/generate-notices.mjs   writes public/THIRD_PARTY_NOTICES.txt
 scripts/headersFile.ts, scripts/screenshots.mjs   reads public/_headers; remakes the images
+scripts/siteAddress.ts   the site's address for link previews (homepage or SITE_URL)
 public/_headers, public/og-image.png   host headers and cache rules; the link-preview card
 eslint.config.js, .prettierrc.json   lint and format settings
 tools/typescript-eslint/   typescript-eslint with the TypeScript 6 it needs (npm workspace)

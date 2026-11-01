@@ -61,6 +61,7 @@
     "node": "^22.13.0 || ^24.0.0 || >=26.0.0"
   },
   "author": "Vegard Wærp",
+  "homepage": "https://blockparts.vegardmakes.com",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/vegardw/building-block-parts.git"
