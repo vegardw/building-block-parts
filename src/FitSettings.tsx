@@ -10,7 +10,7 @@ import { SPEC, CLEARANCE_FIELDS, type ClearanceKey } from "./spec";
 import { formatClearance, readClearance } from "./clearance";
 import { fieldStatus, fitFromFile, fitToFile, isoDate, NOMINAL_FIT, type Fit, type FieldStatus } from "./fit";
 import { stepFor } from "./calibrationSteps";
-import { stepHash } from "./route";
+import { dimensionsHash, stepHash } from "./route";
 import type { SummaryItem } from "./parts/types";
 
 export const formatDate = (iso: string): string =>
@@ -147,8 +147,8 @@ export default function FitSettings({ open, onClose, fit, onType, onReplace }: F
         <a href="#calibrate" onClick={onClose}>
           Calibrate
         </a>{" "}
-        section finds them. They are kept in this browser only: save them to a file to keep them safe or to use them in
-        another browser.
+        section finds them, and <a href={dimensionsHash()}>Dimensions</a> shows the sizes each one changes. They are
+        kept in this browser only: save them to a file to keep them safe or to use them in another browser.
       </p>
       <div className="fit-fields">
         {CLEARANCE_FIELDS.map((f) => (

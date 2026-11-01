@@ -160,7 +160,7 @@ The **fit settings** (`src/fit.ts`) are the eight clearance values as typed plus
 in a dialog (`FitSettings.tsx`). Saving them to a JSON file, loading one (`fitToFile`, `fitFromFile`: loading
 replaces all of them, a value missing from the file becomes 0, and nothing changes if any value is wrong) and resetting
 them is one component, `FitFileActions`, shown in the dialog and in the "Your fit settings" box at the top of the
-Calibrate section (`FitCard`), where the values are made. Loading and resetting offer Undo instead of asking first. `#guide` opens the whole calibration guide over either section.
+Calibrate section (`FitCard`), where the values are made. Loading and resetting offer Undo instead of asking first. `#guide` opens the whole calibration guide over either section, `#dimensions` the dimensions (see below).
 
 `App.tsx` holds the state and works out the part on screen: under Parts the selected part with the user's fit
 settings; under Calibrate the step's part at nominal clearance (`NO_CLEARANCE`; calibration parts exist to find the
@@ -203,7 +203,8 @@ same rule is why every part is split into a pure definition and a CAD builder (s
 | [src/fit.ts](../src/fit.ts) | The fit settings: values with their origin, typed or calibrated changes, status, the settings file | pure |
 | [src/calibrationSteps.ts](../src/calibrationSteps.ts) | The Calibrate section's steps, their state, measured sizes to settings, the guide's sections | pure |
 | [src/settings.ts](../src/settings.ts) | `settingsFrom`: saved settings to the starting state, with fallbacks | pure |
-| [src/route.ts](../src/route.ts) | The `#hash` of each section, part and step, with its parameters, and of the guide | pure |
+| [src/route.ts](../src/route.ts) | The `#hash` of each section, part and step, with its parameters, and of the guide and the dimensions | pure |
+| [src/dimensionTables.ts](../src/dimensionTables.ts) | The Dimensions dialog's tables: each part family's sizes from `spec.ts`, the fit setting that changes each, links to `docs/dimensions.md` on GitHub | pure |
 | [src/stepper.ts](../src/stepper.ts) | `stepText`: the − and + buttons and arrow keys of a number field | pure |
 | [src/layout.ts](../src/layout.ts) | `shelfLayout` and `shelf` (one part at a time): parts in rows, for a file with several parts | pure |
 | [src/partsList.ts](../src/partsList.ts) | The parts list: adding, quantities, descriptions, saved data | pure |
@@ -238,6 +239,7 @@ same rule is why every part is split into a pure definition and a CAD builder (s
 | [src/ReplicadMesh.tsx](../src/ReplicadMesh.tsx) | Draws a `MeshData`: faces and edge lines, a geometry per mesh | UI |
 | [src/ErrorBoundary.tsx](../src/ErrorBoundary.tsx) | Keeps a crash in the preview from blanking the whole page | UI |
 | [src/CalibrationGuide.tsx](../src/CalibrationGuide.tsx), [src/guideHtml.ts](../src/guideHtml.ts) | The in-app calibration guide, rendered from `docs/calibration.md` | UI |
+| [src/Dimensions.tsx](../src/Dimensions.tsx) | The Dimensions dialog: the tables of `dimensionTables.ts`, opened at a part's table | UI |
 | [src/index.tsx](../src/index.tsx) | Entry point: mounts the app | UI |
 | [tests/](../tests/) | Vitest tests, a small STEP reader and beam-measuring helpers | |
 | [scripts/generate-notices.mjs](../scripts/generate-notices.mjs) | Writes the third-party licence file | |
@@ -689,7 +691,9 @@ time.
 
 Links to `#guide` open the whole guide over the current section, and so does loading the page with that address.
 Closing it puts the section's address back: by going back in history when a link opened it (the entry before is the
-section), otherwise by replacing the address. The guide's old address, `#calibration`, now opens the Calibrate section.
+section), otherwise by replacing the address. While the address names the guide (or the dimensions), the page never
+writes its own address over it, so Forward can open it again after Close. The guide's old address, `#calibration`,
+now opens the Calibrate section.
 
 When you edit the guide:
 
@@ -699,6 +703,25 @@ When you edit the guide:
   every step.
 - Write each step's section so it reads well both on its own and in the app's Test card: it is shown without its
   heading, and ends by saying what to pick under **Result**.
+
+## The dimensions
+
+The Dimensions dialog (`src/Dimensions.tsx`) is a short version of `docs/dimensions.md`: a table per family of parts
+(beam, axle, pin, brick and plate, brick with holes) with each size, the fit setting that changes it, and a one-line
+note only where a size isn't the design drawings' (measured on genuine parts) or isn't settled. Each table links to its
+section of `docs/dimensions.md` on GitHub for the sources. The tables are data in `src/dimensionTables.ts` whose
+numbers are read from `spec.ts`, so they can't drift from the parts; unlike the calibration guide, there is no markdown
+to keep in step by hand.
+
+`#dimensions` opens it over the current section, from the top; `#dimensions/<id>` (`#dimensions/pin`) at one table.
+Under Parts, "See this part's dimensions" links to the part's table (`dimensionSectionFor`); the footer and the fit
+settings dialog link to the whole. Opened from the fit settings, it opens on top of them and closes back to them.
+Closing works as for the guide.
+
+When you change a nominal size, the tables follow by themselves. `tests/dimensionTables.test.ts` checks that every part
+under Parts has a table, that each table names exactly the fit settings its parts use, that every linked heading
+exists in `docs/dimensions.md`, and a few sizes as the docs write them. A new family of parts needs a section in
+`DIMENSION_SECTIONS`; a note that quotes a measurement is text, so update it with `docs/dimensions.md`.
 
 ## Tests
 
@@ -769,7 +792,8 @@ The tests follow three principles:
 | `clearance.test.ts` | Reading clearance text: invalid fields and messages, adjustments, ignoring fields a part doesn't use, the header's adjusted and invalid counts, data saved before newer fields existed. |
 | `fit.test.ts` | Fit settings: typed and calibrated values, status, saved origins, the settings file written and read back, values written by hand (tiny, a hair beyond a limit), and every way a file is refused. |
 | `calibrationSteps.test.ts` | The steps match the calibration parts and cover every setting, and come group by group; the underside step's check set; step state; measured sizes to settings; the guide's sections. |
-| `settings.test.ts`, `route.test.ts` | Saved settings with their fallbacks, the move of calibration parts to steps and of the half-height beam into the beam; the address of each section, part and step. |
+| `settings.test.ts`, `route.test.ts` | Saved settings with their fallbacks, the move of calibration parts to steps and of the half-height beam into the beam; the address of each section, part and step, and of the guide and the dimensions. |
+| `dimensionTables.test.ts` | The Dimensions dialog's tables: a table for every part under Parts, the fit settings each names are those its parts use, every linked heading exists in `docs/dimensions.md` (and GitHub's anchor for it), sizes as the docs write them, no trademarks. |
 | `kernelError.test.ts` | Readable messages for kernel failures, synchronous and asynchronous, including a real OpenCascade failure named by its exception (`Standard_ConstructionError`); the out-of-memory message; the engine-load messages (old browser, memory, connection). |
 | `orientation.test.ts` | Parts lie along X with their first end at −X: an axle's End 1, a pin's Side 1, the calibration bars' flat end (the underside bar's too) and the calibration axle's small end; a brick's longer side, whichever way its size is given. |
 | `spec.test.ts` | The nominal dimensions are the right fractions of the 8 mm module; the measured counterbore and collar sizes; `MIN_WALL` beside the nominal counterbore. |
@@ -787,7 +811,9 @@ The tests follow three principles:
 Content-Security-Policy applies. Each test fails on a page error, a console error or a CSP violation. It checks:
 
 - a 5-hole beam: the CSP header is sent, the engine loads, the preview shows the size (and the 3D view, or its message
-  where the browser has no WebGL), and the downloaded STEP file has only exact faces and edges and measures as
+  where the browser has no WebGL), "See this part's dimensions" opens the Dimensions dialog at the beam's table
+  (its sources link to `docs/dimensions.md` on GitHub) and closes back to the part, and the downloaded STEP file has
+  only exact faces and edges and measures as
   `expectedBeam(5)` with an 8 mm pitch (`measureBeam`, the same code as the unit tests);
 - the same beam as STL: a mesh within 0.003 mm of the beam's size;
 - Calibrate: "Download all calibration parts" gives one STEP file with six exact solids, and the underside step's

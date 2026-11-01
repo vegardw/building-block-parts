@@ -4,7 +4,8 @@ This page lists the dimensions the generator uses, where each value comes from, 
 disagree. The parts are meant to be compatible with LEGO® bricks and LEGO® Technic™ elements; see the trademark note
 at the end.
 
-All values are in millimetres. Numbers in square brackets refer to the [sources](#sources) list.
+All values are in millimetres. Numbers in square brackets refer to the [sources](#sources) list. The app shows a
+short version of these tables, without the sources: its Dimensions dialog, opened from each part or the page's footer.
 
 ## Nominal values, not measurements
 

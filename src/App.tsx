@@ -21,13 +21,15 @@ import { KEYS, readStorage, writeStorage } from "./storage";
 import { engineUnsupported, unsupportedMessage } from "./browserSupport";
 import { SOURCE_URL } from "./links";
 import { createEngine, noEngine, type Engine } from "./engine";
-import { readHash, partHash, stepHash, type Route, type View } from "./route";
+import { readHash, partHash, stepHash, dimensionsHash, type Doc, type Route, type View } from "./route";
 import { CALIBRATION_STEPS, getStep, requireStep, type StepId } from "./calibrationSteps";
 import { originsFrom, typeFitValue, calibratedFitValue, isoDate, type Fit } from "./fit";
 import { ButtonsField, ParamFields } from "./fields";
 import PartPicker from "./PartPicker";
 import Viewer from "./Viewer";
 import CalibrationGuide, { useGuide } from "./CalibrationGuide";
+import Dimensions from "./Dimensions";
+import { dimensionSectionFor } from "./dimensionTables";
 import FitSettings, { FitBox, FitButton, FitCard } from "./FitSettings";
 import PartsList from "./PartsListCard";
 import { addToList, describeItem, listFrom, totalCount, type ListItem } from "./partsList";
@@ -160,7 +162,7 @@ export default function App() {
   const [initial] = useState(() => settingsFrom(readStorage(KEYS.settings)));
   const [initialRoute] = useState(() => readHash(window.location.hash));
   const [view, setView] = useState<View>(initialRoute.view ?? "parts");
-  const [guideOpen, setGuideOpen] = useState(initialRoute.guide);
+  const [doc, setDoc] = useState<Doc | null>(initialRoute.doc); // the guide or the dimensions, open over the page
   const [fitOpen, setFitOpen] = useState(false);
   // An address naming a part or step wins over the saved one, so links open what they name.
   const [partId, setPartId] = useState(partIn(initialRoute) ?? initial.partId);
@@ -183,8 +185,8 @@ export default function App() {
   const [listShown, setListShown] = useState(() => list.length > 0);
   const [added, setAdded] = useState<{ request: BuildRequest; message: string } | null>(null); // the last "Add to list"
   const [slowLoad, setSlowLoad] = useState(false); // the engine is taking long to load
-  // The guide was opened by a link in the app, so the entry before it is this page.
-  const guideFromLink = useRef(false);
+  // The open document was opened by a link in the app, so the entry before it is this page.
+  const docFromLink = useRef(false);
 
   // Links, the back and forward buttons, and addresses typed by hand.
   useEffect(() => {
@@ -196,8 +198,8 @@ export default function App() {
       const step = stepIn(route);
       if (step) setStepId(step.id);
       setParamText((prev) => withAddress(prev, route));
-      setGuideOpen(route.guide);
-      guideFromLink.current = route.guide;
+      setDoc(route.doc);
+      docFromLink.current = route.doc !== null;
       setRouteTick((t) => t + 1);
     };
     window.addEventListener("hashchange", onRoute);
@@ -241,19 +243,22 @@ export default function App() {
     : calibrating
       ? stepHash(stepId, fixedParams ? undefined : parsed)
       : partHash(partId, parsed);
+  // Never over a document's address: closing one goes back to the entry before it
+  // (closeDoc), and overwriting it first would leave Forward nothing to reopen.
   useEffect(() => {
-    if (!guideOpen && paramsValid && window.location.hash !== address) history.replaceState(null, "", address);
-  }, [address, paramsValid, guideOpen, routeTick]);
+    const hash = window.location.hash;
+    if (!doc && !readHash(hash).doc && paramsValid && hash !== address) history.replaceState(null, "", address);
+  }, [address, paramsValid, doc, routeTick]);
 
   // Back to the section's address, so the link works again next time. Opened by a
-  // link, the guide goes back in history instead of replacing its entry, which
+  // link, a document goes back in history instead of replacing its entry, which
   // would leave the same address twice and a Back button that seems to do nothing.
-  const closeGuide = () => {
-    setGuideOpen(false);
-    if (window.location.hash !== "#guide") return;
-    if (guideFromLink.current) history.back();
+  const closeDoc = () => {
+    setDoc(null);
+    if (!readHash(window.location.hash).doc) return;
+    if (docFromLink.current) history.back();
     else history.replaceState(null, "", address);
-    guideFromLink.current = false;
+    docFromLink.current = false;
   };
 
   // Only the fields this part uses with these parameters; the others are 0 and can't block it.
@@ -285,6 +290,7 @@ export default function App() {
   );
 
   const summary = usesClearance && clearance ? (part.summary?.(parsed, clearance) ?? null) : null;
+  const dimensions = calibrating ? undefined : dimensionSectionFor(part.id); // its table in the Dimensions dialog
   // The file name, shown under the download button before downloading.
   const adjusted = request !== null && used.some((k) => request.clearance[k] !== 0);
   const fileName = request && `${part.filename(request.params)}${adjusted ? "-adjusted" : ""}.${format}`;
@@ -532,6 +538,11 @@ export default function App() {
           )}
 
           {!problem && part.info && <p className="note">{part.info(parsed)}</p>}
+          {dimensions && (
+            <p className="note">
+              <a href={dimensionsHash(dimensions.id)}>See this part's dimensions</a>
+            </p>
+          )}
 
           {usesClearance && (
             <FitBox
@@ -649,10 +660,18 @@ export default function App() {
         />
       )}
 
-      <CalibrationGuide open={guideOpen} onClose={closeGuide} />
+      <CalibrationGuide open={doc?.kind === "guide"} onClose={closeDoc} />
+      <Dimensions
+        open={doc?.kind === "dimensions"}
+        section={doc?.kind === "dimensions" ? doc.section : null}
+        onClose={closeDoc}
+      />
       <FitSettings open={fitOpen} onClose={() => setFitOpen(false)} fit={fit} onType={typeFit} onReplace={setFit} />
 
       <footer className="footer">
+        <p>
+          <a href={dimensionsHash()}>Dimensions</a> of every part, and where they come from.
+        </p>
         <p>
           LEGO® and Technic™ are trademarks of the LEGO Group of companies. The LEGO Group does not sponsor, authorize,
           or endorse this website.

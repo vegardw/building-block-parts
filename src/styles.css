@@ -1033,7 +1033,7 @@ a {
   gap: 10px;
 }
 
-/* Dialogs: the calibration guide and the fit settings. */
+/* Dialogs: the calibration guide, the dimensions and the fit settings. */
 .dialog {
   width: min(760px, calc(100vw - 32px));
   max-height: calc(100vh - 64px);
@@ -1129,6 +1129,62 @@ a {
   font-weight: 600;
   background: var(--bg);
 }
+/* The dimensions: a table per family of parts, with the columns lined up across them. */
+.dimensions {
+  font-size: 0.925rem;
+  line-height: 1.5;
+}
+.dimensions p {
+  margin: 0 0 10px;
+}
+.dimensions-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 24px 0 6px;
+}
+.dimensions-head h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+.dimensions-head a {
+  font-size: 0.85rem;
+}
+.dimensions table {
+  width: 100%;
+  table-layout: fixed;
+  font-size: 0.85rem;
+  border-collapse: collapse;
+}
+.dimensions th,
+.dimensions td {
+  padding: 6px 8px;
+  text-align: left;
+  vertical-align: top;
+  overflow-wrap: break-word;
+  border-bottom: 1px solid var(--border);
+}
+.dimensions thead th {
+  font-weight: 600;
+  background: var(--bg);
+}
+.dimensions thead th:nth-child(1) {
+  width: 34%;
+}
+.dimensions thead th:nth-child(2) {
+  width: 40%;
+}
+.dimensions tbody th {
+  font-weight: 500;
+}
+.dimension-note {
+  display: block;
+  margin-top: 2px;
+  font-size: 0.8rem;
+  font-weight: 400;
+  color: var(--muted);
+}
 
 /* After the rules they change, so they win. */
 @media (max-width: 820px) {
@@ -1194,6 +1250,10 @@ a {
   }
   .pick-mark {
     margin-left: auto;
+  }
+  .dimensions th,
+  .dimensions td {
+    padding: 6px 4px;
   }
 }
 

@@ -1,7 +1,9 @@
 import { useEffect, useId, useRef, type ReactNode } from "react";
 
 // A modal <dialog> with a title and a Close button. `open` drives it; Escape
-// closes it too, and either way onClose is called.
+// closes it too, and either way onClose is called. It isn't called when `open`
+// turns false: the browser fires that close event a moment later, by which time
+// the page may have opened the dialog again (Back pressed quickly after it).
 export default function Dialog({
   open,
   onClose,
@@ -33,7 +35,9 @@ export default function Dialog({
       className={`dialog${className ? ` ${className}` : ""}`}
       aria-labelledby={title ? titleId : undefined}
       aria-label={title ? undefined : label}
-      onClose={onClose}
+      onClose={(e) => {
+        if (open && !e.currentTarget.open) onClose();
+      }}
     >
       <div className="dialog-bar">
         {title && <h2 id={titleId}>{title}</h2>}

@@ -85,6 +85,9 @@ cylinders with circular edges, not polygons made of line segments.
 - A calibration guide, in [docs/calibration.md](docs/calibration.md) and inside the app:
   each step shows its section, and the whole guide opens from the Calibrate section
   (or the page address ending in `#guide`)
+- The dimensions inside the app: a table per kind of part with each size, the fit setting
+  that changes it, and links to [docs/dimensions.md](docs/dimensions.md) for the sources;
+  each part links to its table (or the page address ending in `#dimensions`)
 
 ## Running locally
 
@@ -229,6 +232,7 @@ src/PartPicker.tsx, src/PartsListCard.tsx, src/Calibrate.tsx, src/FitSettings.ts
 src/fields.tsx, src/Dialog.tsx   UI parts
 src/Viewer.tsx, src/Scene.tsx, src/ThreeContext.tsx, src/ReplicadMesh.tsx   3D viewer (Scene: a lazy chunk)
 src/CalibrationGuide.tsx, src/guideHtml.ts   in-app calibration guide (docs/calibration.md)
+src/Dimensions.tsx, src/dimensionTables.ts   in-app dimensions (sizes from spec.ts; sources in docs/dimensions.md)
 tests/              Vitest tests and the STEP analyser
 e2e/                browser smoke test (Playwright; playwright.config.ts)
 scripts/generate-notices.mjs   writes public/THIRD_PARTY_NOTICES.txt

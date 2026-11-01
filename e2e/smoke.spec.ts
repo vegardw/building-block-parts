@@ -62,6 +62,18 @@ test("a beam: loads, previews and downloads a STEP file with exact geometry, und
   ).toBeVisible();
   await expect(page.getByRole("link", { name: "Source code on GitHub" })).toHaveAttribute("href", SOURCE_URL);
 
+  // The part's dimensions open over the page, at its table, and close back to the part.
+  await page.getByRole("link", { name: "See this part's dimensions" }).click();
+  const dimensions = page.getByRole("dialog", { name: "Dimensions" });
+  await expect(dimensions.getByRole("heading", { name: "Beam (liftarm)" })).toBeInViewport();
+  await expect(dimensions.getByRole("link", { name: "Sources for Beam (liftarm)" })).toHaveAttribute(
+    "href",
+    `${SOURCE_URL}/blob/main/docs/dimensions.md#beam-liftarm`,
+  );
+  await dimensions.getByRole("button", { name: "Close" }).click();
+  await expect(dimensions).toBeHidden();
+  await expect(page).toHaveURL(/#parts\/beam\?holes=5&height=0$/);
+
   const { file, bytes } = await download(page, "Download STEP");
   expect(file.suggestedFilename()).toBe("beam-5-holes.step");
   const text = bytes.toString("utf8");
